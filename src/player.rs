@@ -53,7 +53,7 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, world: &mut World){
 
 pub fn player_input(game_state: &mut State, context: &mut Rltk) -> RunState{
     match context.key {
-        None => { return RunState::Paused; }, // if no key pressed, no update for game to run on
+        None => { return RunState::AwaitingInput; }, // if no key pressed, no update for game to run on
         Some(key) => match key {
             VirtualKeyCode::A |
             VirtualKeyCode::Left => try_move_player(-1, 0, &mut game_state.world),
@@ -76,9 +76,10 @@ pub fn player_input(game_state: &mut State, context: &mut Rltk) -> RunState{
 
             VirtualKeyCode::Z => try_move_player(-1, -1, &mut game_state.world),
 
-            _ => { return RunState::Paused; }, // if irrelevant key pressed, nothing for game to update on
+            _ => { return RunState::AwaitingInput; }, // if irrelevant key pressed, nothing for game to update on
         },
     }
 
-    RunState::Running // if player just moved, we need to run the game to update stuff
+    // if player just moved, we need to run the game to update stuff
+    RunState::PlayerTurn 
 }

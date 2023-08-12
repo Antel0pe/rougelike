@@ -24,13 +24,14 @@ pub use crate::damage_system::*;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum RunState{
-    Paused,
-    Running,
+    PreRun, // init
+    AwaitingInput, // waiting for player to make action
+    PlayerTurn, // update systems after player turn
+    MonsterTurn, // run and update monsters
 }
 
 pub struct State {
     pub world: World,
-    pub run_state: RunState,
 }
 impl State{
     pub fn run_systems(&mut self){
@@ -64,18 +65,33 @@ impl GameState for State {
     fn tick(&mut self, context : &mut Rltk) {
         context.cls();
 
+        let mut run_state = *self.world.read_resource::<RunState>();
+
+        match run_state{
+            RunState::PreRun => {
+                self.run_systems();
+                run_state = RunState::AwaitingInput;
+            },
+            RunState::AwaitingInput => {
+                run_state = player_input(self, context);
+            },
+            RunState::PlayerTurn => {
+                self.run_systems();
+                run_state = RunState::MonsterTurn;
+            },
+            RunState::MonsterTurn => {
+                self.run_systems();
+                run_state = RunState::AwaitingInput;
+            },
+        }
+
+        {
+            let mut new_run_state = self.world.write_resource::<RunState>();
+            *new_run_state = run_state;
+        }
+
         // delete dead entities
         delete_dead_entities(&mut self.world);
-
-
-        if self.run_state == RunState::Running{
-            // run system only if the game is in a running state
-            self.run_systems();
-            self.run_state = RunState::Paused;
-        } else {
-            //handle player movement
-            self.run_state = player_input(self, context);
-        }
 
         // draw map
         // let map = self.world.fetch::<Map>();
@@ -89,11 +105,10 @@ impl GameState for State {
 
         for (pos, render) in (&positions, &renderables).join(){
             let idx = map.xy_idx(pos.x, pos.y);
-            if !map.currently_visible_tiles[idx]{
-                continue;
+            if map.currently_visible_tiles[idx]{
+                context.set(pos.x, pos.y, render.foreground, render.background, render.symbol);
             }
-
-            context.set(pos.x, pos.y, render.foreground, render.background, render.symbol);
+            
         }
 
     }
@@ -102,7 +117,6 @@ impl GameState for State {
 fn main() -> rltk::BError {
     let mut game_state = State{
         world: World::new(),
-        run_state: RunState::Running,
     };
 
     let context = RltkBuilder::simple80x50()
@@ -131,7 +145,7 @@ fn main() -> rltk::BError {
 
     // create entities, something in the world with components
     // this is player entity
-    game_state.world.create_entity()
+    let player_entity = game_state.world.create_entity()
         .with(Position { x: player_x, y: player_y })
         .with(Renderable {
             symbol: rltk::to_cp437('o'),
@@ -144,6 +158,12 @@ fn main() -> rltk::BError {
         .with(BlocksTile{ })
         .with(CombatStats{ max_hp: 30, hp: 30, attack: 5, defense: 2, })
         .build();
+
+    // insert player as resource into world
+    game_state.world.insert(player_entity);
+
+    // insert run state as resource
+    game_state.world.insert(RunState::PreRun);
 
     //monster spawner
     let mut rng = RandomNumberGenerator::new();

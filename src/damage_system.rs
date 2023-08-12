@@ -1,6 +1,6 @@
 use specs::prelude::*;
-
-use crate::{SuffersDamage, CombatStats};
+use rltk::console;
+use crate::{SuffersDamage, CombatStats, Player};
 
 pub struct DamageSystem{ }
 
@@ -32,10 +32,17 @@ pub fn delete_dead_entities(world: &mut World){
     {
         let combat_stats = world.read_storage::<CombatStats>();
         let entities = world.entities();
+        let players = world.read_storage::<Player>();
 
         for (combat_stats, entity) in (&combat_stats, &entities).join(){
             if combat_stats.hp <= 0 {
-                dead_entities.push(entity);
+                match players.get(entity){
+                    Some(_) => console::log("You ded..."),
+                    None => {
+                        dead_entities.push(entity);
+                    }
+                }
+
             }
         }
     }
