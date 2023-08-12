@@ -65,7 +65,7 @@ impl GameState for State {
     fn tick(&mut self, context : &mut Rltk) {
         context.cls();
 
-        let mut run_state = *self.world.read_resource::<RunState>();
+        let mut run_state = *self.world.fetch::<RunState>();
 
         match run_state{
             RunState::PreRun => {
@@ -155,7 +155,6 @@ fn main() -> rltk::BError {
         .with(Player{ })
         .with(FOV{ visible_tiles: Vec::new(), range: 8, needs_update: true, })
         .with(Name{ name: "Player".to_string() })
-        .with(BlocksTile{ })
         .with(CombatStats{ max_hp: 30, hp: 30, attack: 5, defense: 2, })
         .build();
 

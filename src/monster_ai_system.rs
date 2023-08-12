@@ -34,16 +34,12 @@ impl<'a> System<'a> for MonsterAI{
             if distance < 1.5{
                 wants_to_melee.insert(entity, WantsToMelee { target: *player_entity })
                     .expect("Could not add wants to melee component to monster with target player.");
-            }
-
-            
-            if fov.visible_tiles.contains(&*player_position){
+            } else if fov.visible_tiles.contains(&*player_position){
                 let monster_path_to_player = rltk::a_star_search(
                     map.xy_idx(pos.x, pos.y),
                     map.xy_idx(player_position.x, player_position.y),
                     &mut *map);
 
-                console::log(&format!("Success: {}, Steps: {}", monster_path_to_player.success, monster_path_to_player.steps.len()));
                 if monster_path_to_player.success && monster_path_to_player.steps.len() > 1 {
                     // moving out of previous tile, not blocking it anymore
                     let prev_idx = map.xy_idx(pos.x, pos.y);

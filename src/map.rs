@@ -1,4 +1,4 @@
-use rltk::{ RGB, Rltk, RandomNumberGenerator, Algorithm2D, Point, BaseMap, FontCharType, SmallVec };
+use rltk::{ RGB, Rltk, RandomNumberGenerator, Algorithm2D, Point, BaseMap, FontCharType, SmallVec, console };
 use specs::{World, Entity};
 use crate::rect::*;
 use std::cmp::{max, min};
@@ -66,7 +66,7 @@ impl Map{
         !self.blocked_tiles[self.xy_idx(x, y)]
     }
 
-    pub fn populated_blocked_tiles(&mut self){
+    pub fn populate_blocked_tiles(&mut self){
         self.blocked_tiles = self.tiles
             .iter()
             .map(|tile| *tile == TileType::Wall)
@@ -139,8 +139,8 @@ impl Map{
 }
 
 impl BaseMap for Map{
-    fn is_opaque(&self, _idx: usize) -> bool {
-        self.tiles[_idx] == TileType::Wall
+    fn is_opaque(&self, idx: usize) -> bool {
+        self.tiles[idx] == TileType::Wall
     }
 
     fn get_available_exits(&self, idx: usize) -> rltk::SmallVec<[(usize, f32); 10]> {

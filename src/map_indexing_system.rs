@@ -14,7 +14,7 @@ impl<'a> System<'a> for MapIndexingSystem{
     fn run(&mut self, data: Self::SystemData) {
         let (mut map, position, blocks_tile, entities) = data;
 
-        map.populated_blocked_tiles();
+        map.populate_blocked_tiles();
         map.clear_tile_content();
 
 
