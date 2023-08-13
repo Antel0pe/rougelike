@@ -37,7 +37,7 @@ impl<'a> System<'a> for MonsterAI{
                 let monster_path_to_player = rltk::a_star_search(
                     map.xy_idx(pos.x, pos.y),
                     map.xy_idx(player_position.x, player_position.y),
-                    &mut *map);
+                    &*map);
 
                 if monster_path_to_player.success && monster_path_to_player.steps.len() > 1 {
                     // moving out of previous tile, not blocking it anymore

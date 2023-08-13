@@ -22,7 +22,7 @@ impl<'a> System<'a> for MapIndexingSystem{
             let idx = map.xy_idx(pos.x, pos.y);
 
             // we only want to note an entity blocks a tile if it has the BlocksTile component
-            if let Some(_) = blocks_tile.get(entity){
+            if blocks_tile.get(entity).is_some(){
                 map.blocked_tiles[idx] = true;
             }
 

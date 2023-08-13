@@ -189,7 +189,7 @@ fn main() -> rltk::BError {
         };
 
         game_state.world.create_entity()
-        .with(Position { x: x, y: y })
+        .with(Position { x, y })
         .with(Renderable {
             symbol: glyph,
             foreground: RGB::named(rltk::RED),

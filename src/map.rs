@@ -112,7 +112,7 @@ impl Map{
             let new_room = Rect::new(room_x, room_y, room_width, room_height);
     
             let any_intersecting_rooms = map.rooms.iter()
-                .any(|r| new_room.intersect(&r));
+                .any(|r| new_room.intersect(r));
     
             if !any_intersecting_rooms {
                 map.apply_room_to_map(&new_room);
