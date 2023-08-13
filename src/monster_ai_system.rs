@@ -1,5 +1,4 @@
 use super::*;
-use rltk::console;
 
 pub struct MonsterAI{ }
 

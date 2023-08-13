@@ -2,7 +2,7 @@ use crate::Player;
 
 use super::{Position, FOV, Map};
 use rltk::{field_of_view, Point};
-use specs::{prelude::*};
+use specs::prelude::*;
 
 pub struct FovSystem { }
 

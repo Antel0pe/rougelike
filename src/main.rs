@@ -21,6 +21,10 @@ mod melee_combat_system;
 pub use crate::melee_combat_system::*;
 mod damage_system;
 pub use crate::damage_system::*;
+mod gui;
+pub use crate::gui::*;
+mod gamelog;
+pub use crate::gamelog::*;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum RunState{
@@ -96,6 +100,9 @@ impl GameState for State {
         // draw map
         // let map = self.world.fetch::<Map>();
         draw_map(&self.world, context);
+
+        // draw gui
+        gui::draw_ui(&self.world, context);
         
 
         // render entities with renderable and position components
@@ -119,9 +126,11 @@ fn main() -> rltk::BError {
         world: World::new(),
     };
 
-    let context = RltkBuilder::simple80x50()
+    let mut context = RltkBuilder::simple80x50()
         .with_title("Roguelike Tutorial")
         .build()?;
+
+    context.with_post_scanlines(true);
 
 
     // register components to game, attributes an entity can have
@@ -157,12 +166,6 @@ fn main() -> rltk::BError {
         .with(Name{ name: "Player".to_string() })
         .with(CombatStats{ max_hp: 30, hp: 30, attack: 5, defense: 2, })
         .build();
-
-    // insert player as resource into world
-    game_state.world.insert(player_entity);
-
-    // insert run state as resource
-    game_state.world.insert(RunState::PreRun);
 
     //monster spawner
     let mut rng = RandomNumberGenerator::new();
@@ -203,6 +206,14 @@ fn main() -> rltk::BError {
     // make map resource availale to world
     game_state.world.insert(map);
     game_state.world.insert(Point::new(player_x, player_y));
+
+    // insert player as resource into world
+    game_state.world.insert(player_entity);
+
+    // insert run state as resource
+    game_state.world.insert(RunState::PreRun);
+
+    game_state.world.insert(GameLog{ entries: vec!["Welcome!".to_string()]});
 
 
     rltk::main_loop(context, game_state)

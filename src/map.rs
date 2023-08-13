@@ -1,7 +1,11 @@
-use rltk::{ RGB, Rltk, RandomNumberGenerator, Algorithm2D, Point, BaseMap, FontCharType, SmallVec, console };
+use rltk::{ RGB, Rltk, RandomNumberGenerator, Algorithm2D, Point, BaseMap, FontCharType, SmallVec };
 use specs::{World, Entity};
 use crate::rect::*;
 use std::cmp::{max, min};
+
+const MAP_WIDTH: usize = 80;
+const MAP_HEIGHT: usize = 43;
+const MAP_COUNT: usize = MAP_WIDTH * MAP_HEIGHT;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum TileType{
@@ -41,7 +45,7 @@ impl Map{
         for x in min(x1, x2)..=max(x1, x2){
             let idx = self.xy_idx(x, y);
     
-            if idx < 80*50 {
+            if idx < MAP_COUNT {
                 self.tiles[idx] = TileType::Floor;
             }
         }
@@ -52,7 +56,7 @@ impl Map{
         for y in min(y1, y2)..=max(y1, y2){
             let idx = self.xy_idx(x, y);
     
-            if idx < 80*50{
+            if idx < MAP_COUNT{
                 self.tiles[idx] = TileType::Floor;
             }
         }
@@ -81,14 +85,14 @@ impl Map{
 
     pub fn map_with_rooms_and_corridors() -> Map{
         let mut map = Map{
-            tiles: vec![TileType::Wall; 80*50],
+            tiles: vec![TileType::Wall; MAP_COUNT],
             rooms: Vec::new(),
-            width: 80,
-            height: 50,
-            revealed_tiles: vec![false; 80*50],
-            currently_visible_tiles: vec![false; 80*50],
-            blocked_tiles: vec![false; 80*50],
-            tile_content: vec![Vec::new(); 80*50],
+            width: MAP_WIDTH as i32,
+            height: MAP_HEIGHT as i32,
+            revealed_tiles: vec![false; MAP_COUNT],
+            currently_visible_tiles: vec![false; MAP_COUNT],
+            blocked_tiles: vec![false; MAP_COUNT],
+            tile_content: vec![Vec::new(); MAP_COUNT],
         };
     
         const MAX_ROOMS: i32 = 30;
@@ -102,8 +106,8 @@ impl Map{
             let room_height = rng.range(MIN_SIZE, MAX_SIZE);
     
             // final -1 because the borders are all walls
-            let room_x = rng.roll_dice(1, map.width-1-room_width) - 1;
-            let room_y = rng.roll_dice(1, map.height-1-room_height)-1;
+            let room_x = rng.range(1, map.width-room_width-1);
+            let room_y = rng.range(1, map.height-room_height-1);
     
             let new_room = Rect::new(room_x, room_y, room_width, room_height);
     
@@ -216,7 +220,7 @@ pub fn draw_map(world: &World, context: &mut Rltk) {
 
         // update x, y for terminal
         x += 1;
-        if x > 79{
+        if x > MAP_WIDTH-1{
             x = 0;
             y += 1;
         }
