@@ -1,5 +1,4 @@
-use rltk::{RandomNumberGenerator, FontCharType};
-use rltk::{GameState, Rltk, RGB, RltkBuilder, Point};
+use rltk::{GameState, Rltk, RltkBuilder, Point};
 use specs::prelude::*;
 
 
@@ -25,6 +24,8 @@ mod gui;
 pub use crate::gui::*;
 mod gamelog;
 pub use crate::gamelog::*;
+mod spawner;
+pub use crate::spawner::*;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum RunState{
@@ -145,77 +146,32 @@ fn main() -> rltk::BError {
     game_state.world.register::<CombatStats>();
     game_state.world.register::<WantsToMelee>();
     game_state.world.register::<SuffersDamage>();
-
-
+    
+    
     let map: Map = Map::map_with_rooms_and_corridors();
-
+    
     // get valid x, y for player
     let (player_x, player_y) = map.rooms[0].center();
-
+    
     // create entities, something in the world with components
     // this is player entity
-    let player_entity = game_state.world.create_entity()
-        .with(Position { x: player_x, y: player_y })
-        .with(Renderable {
-            symbol: rltk::to_cp437('o'),
-            foreground: RGB::named(rltk::PURPLE),
-            background: RGB::named(rltk::BLACK),
-        })
-        .with(Player{ })
-        .with(FOV{ visible_tiles: Vec::new(), range: 8, needs_update: true, })
-        .with(Name{ name: "Player".to_string() })
-        .with(CombatStats{ max_hp: 30, hp: 30, attack: 5, defense: 2, })
-        .build();
+    let player_entity = spawner::player(&mut game_state.world, player_x, player_y);
 
-    //monster spawner
-    let mut rng = RandomNumberGenerator::new();
-
-    for (i, room) in map.rooms.iter().skip(1).enumerate(){
-        let (x, y) = room.center();
-
-        let glyph: FontCharType;
-        let monster_type: String;
-
-        match rng.roll_dice(1, 2){
-            1 => {
-                monster_type = "Goblin".to_string();
-                glyph = rltk::to_cp437('g');
-                
-            },
-            _ => {
-                monster_type = "Orc".to_string();
-                glyph = rltk::to_cp437('o');
-            }
-        };
-
-        game_state.world.create_entity()
-        .with(Position { x, y })
-        .with(Renderable {
-            symbol: glyph,
-            foreground: RGB::named(rltk::RED),
-            background: RGB::named(rltk::BLACK),
-        })
-        .with(FOV{ visible_tiles: Vec::new(), range: 8, needs_update: true, })
-        .with(Monster{ })
-        .with(Name{ name: format!("{} #{}", &monster_type, i) })
-        .with(BlocksTile{ })
-        .with(CombatStats{ max_hp: 16, hp: 16, attack: 4, defense: 1, })
-        .build();
+    game_state.world.insert(rltk::RandomNumberGenerator::new());
+    
+    for room in map.rooms.iter().skip(1){
+        spawner::spawn_entities_in_room(&mut game_state.world, room);
     }
-
+    
     // make map resource availale to world
     game_state.world.insert(map);
     game_state.world.insert(Point::new(player_x, player_y));
-
     // insert player as resource into world
     game_state.world.insert(player_entity);
-
     // insert run state as resource
     game_state.world.insert(RunState::PreRun);
-
     game_state.world.insert(GameLog{ entries: vec!["Welcome!".to_string()]});
-
-
+    
     rltk::main_loop(context, game_state)
 
 

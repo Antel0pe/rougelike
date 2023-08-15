@@ -24,3 +24,8 @@ dd/mm/yy
 - Added player health bar to gui
 - Added gamelog so any component could add a message to be read by the player
   - Logged when enemies do damage and die
+
+14/08/23
+- Added tooltip that displays names of entities when mouse hovers over them
+- Refactored + extracted spawning into spawning.rs
+- Randomized how many monsters spawn in a room + monster location

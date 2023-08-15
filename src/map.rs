@@ -3,9 +3,9 @@ use specs::{World, Entity};
 use crate::rect::*;
 use std::cmp::{max, min};
 
-const MAP_WIDTH: usize = 80;
-const MAP_HEIGHT: usize = 43;
-const MAP_COUNT: usize = MAP_WIDTH * MAP_HEIGHT;
+pub const MAP_WIDTH: usize = 80;
+pub const MAP_HEIGHT: usize = 43;
+pub const MAP_COUNT: usize = MAP_WIDTH * MAP_HEIGHT;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum TileType{
@@ -28,6 +28,10 @@ impl Map{
     /// map x, y index into 1D vector idx
     pub fn xy_idx(&self, x: i32, y: i32) -> usize{
         (y as usize * self.width as usize) + x as usize
+    }
+
+    pub fn is_idx_valid(x: i32, y: i32) -> bool{
+        x >= 0 || x < MAP_WIDTH as i32 || y >= 0 || y < MAP_HEIGHT as i32
     }
 
     /// Fill room area with tiles
