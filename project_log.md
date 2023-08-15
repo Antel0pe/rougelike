@@ -29,3 +29,9 @@ dd/mm/yy
 - Added tooltip that displays names of entities when mouse hovers over them
 - Refactored + extracted spawning into spawning.rs
 - Randomized how many monsters spawn in a room + monster location
+
+
+15/08/23
+- Added health potion item + spawning
+- Picking up items
+- Listing inventory in GUI

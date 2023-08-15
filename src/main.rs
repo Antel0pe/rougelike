@@ -26,6 +26,8 @@ mod gamelog;
 pub use crate::gamelog::*;
 mod spawner;
 pub use crate::spawner::*;
+mod inventory_system;
+pub use crate::inventory_system::*;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum RunState{
@@ -33,6 +35,7 @@ pub enum RunState{
     AwaitingInput, // waiting for player to make action
     PlayerTurn, // update systems after player turn
     MonsterTurn, // run and update monsters
+    InInventory,
 }
 
 pub struct State {
@@ -63,12 +66,18 @@ impl State{
         let mut damage_system = DamageSystem{ };
         damage_system.run_now(&self.world);
 
+        // pick up item system
+        let mut item_collection_system = ItemCollectionSystem{ };
+        item_collection_system.run_now(&self.world);
+
         self.world.maintain();
     }
 }
 impl GameState for State {
     fn tick(&mut self, context : &mut Rltk) {
         context.cls();
+        
+        draw_map(&self.world, context);
 
         let mut run_state = *self.world.fetch::<RunState>();
 
@@ -88,6 +97,11 @@ impl GameState for State {
                 self.run_systems();
                 run_state = RunState::AwaitingInput;
             },
+            RunState::InInventory => {
+                if gui::show_inventory(&mut self.world, context) == ItemMenuResult::Exit{
+                    run_state = RunState::AwaitingInput;
+                }
+            }
         }
 
         {
@@ -97,10 +111,6 @@ impl GameState for State {
 
         // delete dead entities
         delete_dead_entities(&mut self.world);
-
-        // draw map
-        // let map = self.world.fetch::<Map>();
-        draw_map(&self.world, context);
 
         // draw gui
         gui::draw_ui(&self.world, context);
@@ -146,6 +156,10 @@ fn main() -> rltk::BError {
     game_state.world.register::<CombatStats>();
     game_state.world.register::<WantsToMelee>();
     game_state.world.register::<SuffersDamage>();
+    game_state.world.register::<Item>();
+    game_state.world.register::<HealthPotion>();
+    game_state.world.register::<InBackpack>();
+    game_state.world.register::<WantsToPickUpItem>();
     
     
     let map: Map = Map::map_with_rooms_and_corridors();

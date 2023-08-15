@@ -1,7 +1,7 @@
-use specs::{World, WorldExt, Join};
-use rltk::{Rltk, RGB};
+use specs::{World, WorldExt, Join, Entity};
+use rltk::{Rltk, RGB, VirtualKeyCode};
 
-use crate::{CombatStats, Player, GameLog, Name, Position, Map};
+use crate::{CombatStats, Player, GameLog, Name, Position, Map, InBackpack};
 
 pub fn draw_ui(world: &World, context: &mut Rltk){
     // draw box around bottom bit of screen
@@ -97,5 +97,48 @@ pub fn draw_tooltips(world: &World, context: &mut Rltk){
         context.print_color(arrow_position_x, mouse_position.1, RGB::named(rltk::WHITE), RGB::named(rltk::GREY), &arrow_string.to_string());
     }
     
+}
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum ItemMenuResult{
+    Exit, 
+    NoResponse,
+    Selected,
+}
+
+pub fn show_inventory(world: &mut World, context: &mut Rltk) -> ItemMenuResult{
+    let player_entity = world.fetch::<Entity>();
+    let names = world.read_storage::<Name>();
+    let backpacks = world.read_storage::<InBackpack>();
+
+    let number_of_items = (&backpacks).join()
+        .filter(|backpack| backpack.owner == *player_entity)
+        .count();
+
+    let mut y = (25 - (number_of_items/2)) as i32;
+
+    context.draw_box(15, y-2, 31, number_of_items+3, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+    context.print_color(18, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Inventory");
+    context.print_color(18, y+number_of_items as i32 + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Escape to exit");
+
+    let mut j = 0;
+    for (name, _backpack) in (&names, &backpacks).join(){
+        context.set(17, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437('('));
+        context.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
+        context.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
+
+        context.print(21, y, &name.name);
+
+        y += 1;
+        j += 1;
+    }
+
+    match context.key{
+        None => ItemMenuResult::NoResponse,
+        Some(key) => match key{
+            VirtualKeyCode::Escape => ItemMenuResult::Exit,
+            _ => ItemMenuResult::NoResponse,
+        }
+    }
 
 }

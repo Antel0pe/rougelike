@@ -76,10 +76,42 @@ pub fn player_input(game_state: &mut State, context: &mut Rltk) -> RunState{
 
             VirtualKeyCode::Z => try_move_player(-1, -1, &mut game_state.world),
 
+            // pick up item
+            VirtualKeyCode::G => pickup_item(&mut game_state.world),
+
+            VirtualKeyCode::I => return RunState::InInventory,
+
             _ => { return RunState::AwaitingInput; }, // if irrelevant key pressed, nothing for game to update on
         },
     }
 
     // if player just moved, we need to run the game to update stuff
     RunState::PlayerTurn 
+}
+
+
+pub fn pickup_item(world: &mut World){
+    let player_position = world.read_resource::<Point>();
+    let player_entity = world.fetch::<Entity>();
+    let mut pick_up_items = world.write_storage::<WantsToPickUpItem>();
+    let positions = world.read_storage::<Position>();
+    let entities = world.entities();
+    let items = world.read_storage::<Item>();
+    let mut gamelog = world.write_resource::<GameLog>();
+
+    let mut target_item: Option<Entity> = None;
+    for (_item, pos, entity) in (&items, &positions, &entities).join(){
+        if pos.x == player_position.x && pos.y == player_position.y{
+            target_item = Some(entity);
+        }
+    }
+
+    match target_item{
+        None => gamelog.entries.push("Nothing to pick up here...".to_string()),
+        Some(item) => {
+            pick_up_items.insert(item, WantsToPickUpItem { collected_by: *player_entity, item: item })
+                .expect("Unable to pick up item by player.");
+        },
+    }
+
 }
