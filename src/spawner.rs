@@ -14,6 +14,7 @@ pub fn player(world: &mut World, player_x: i32, player_y: i32) -> Entity {
             symbol: rltk::to_cp437('o'),
             foreground: RGB::named(rltk::PURPLE),
             background: RGB::named(rltk::BLACK),
+            render_order: 0,
         })
         .with(Player{ })
         .with(FOV{ visible_tiles: Vec::new(), range: 8, needs_update: true, })
@@ -29,6 +30,7 @@ pub fn health_potion(world: &mut World, x: i32, y: i32){
             symbol: rltk::to_cp437('¡'),
             foreground: RGB::named(rltk::MAGENTA),
             background: RGB::named(rltk::BLACK),
+            render_order: 2,
         })
         .with(Name{ name: "Health Potion".to_string() })
         .with(Item{ })
@@ -112,6 +114,7 @@ pub fn monster<S: ToString> (world: &mut World, x: i32, y: i32, glyph: rltk::Fon
             symbol: glyph,
             foreground: RGB::named(rltk::RED),
             background: RGB::named(rltk::BLACK),
+            render_order: 1,
         })
         .with(FOV{ visible_tiles: Vec::new(), range: 8, needs_update: true, })
         .with(Monster{ })

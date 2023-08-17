@@ -36,6 +36,7 @@ pub enum RunState{
     PlayerTurn, // update systems after player turn
     MonsterTurn, // run and update monsters
     InInventory,
+    ShowDropItem,
 }
 
 pub struct State {
@@ -70,6 +71,12 @@ impl State{
         let mut item_collection_system = ItemCollectionSystem{ };
         item_collection_system.run_now(&self.world);
 
+        let mut drink_potion_system = DrinkPotionSystem{ };
+        drink_potion_system.run_now(&self.world);
+
+        let mut item_drop_system = ItemDropSystem{ };
+        item_drop_system.run_now(&self.world);
+
         self.world.maintain();
     }
 }
@@ -98,8 +105,37 @@ impl GameState for State {
                 run_state = RunState::AwaitingInput;
             },
             RunState::InInventory => {
-                if gui::show_inventory(&mut self.world, context) == ItemMenuResult::Exit{
-                    run_state = RunState::AwaitingInput;
+                let (item_menu_result, selected_entity) = gui::show_inventory(&mut self.world, context);
+
+                match item_menu_result{
+                    ItemMenuResult::Exit => run_state = RunState::AwaitingInput,
+                    ItemMenuResult::NoResponse => {},
+                    ItemMenuResult::Selected => {
+                        let potion_entity = selected_entity.unwrap();
+                        let mut wants_to_drink_potions = self.world.write_storage::<WantsToDrinkPotion>();
+
+                        wants_to_drink_potions.insert(*self.world.fetch::<Entity>(), WantsToDrinkPotion { potion: potion_entity })
+                            .expect("Unable to insert intent to drink potion for player.");
+
+                        run_state = RunState::PlayerTurn;
+                    }
+                }
+            },
+            RunState::ShowDropItem => {
+                let (menu_result, entity) = gui::show_drop_item_menu(&mut self.world, context);
+
+                match menu_result{
+                    ItemMenuResult::Exit => run_state = RunState::AwaitingInput,
+                    ItemMenuResult::NoResponse => {},
+                    ItemMenuResult::Selected => {
+                        let dropped_item = entity.unwrap();
+                        let mut wants_to_drop_item = self.world.write_storage::<WantsToDropItem>();
+
+                        wants_to_drop_item.insert(*self.world.fetch::<Entity>(), WantsToDropItem { item: dropped_item })
+                            .expect("Could not add WantsToDropItem component to item for player.");
+
+                        run_state = RunState::PlayerTurn;
+                    },
                 }
             }
         }
@@ -121,7 +157,10 @@ impl GameState for State {
         let renderables = self.world.read_storage::<Renderable>();
         let map = self.world.fetch::<Map>();
 
-        for (pos, render) in (&positions, &renderables).join(){
+        let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
+        data.sort_by(|&a, &b| b.1.render_order.cmp(&a.1.render_order));
+
+        for (pos, render) in data.iter(){
             let idx = map.xy_idx(pos.x, pos.y);
             if map.currently_visible_tiles[idx]{
                 context.set(pos.x, pos.y, render.foreground, render.background, render.symbol);
@@ -160,6 +199,8 @@ fn main() -> rltk::BError {
     game_state.world.register::<HealthPotion>();
     game_state.world.register::<InBackpack>();
     game_state.world.register::<WantsToPickUpItem>();
+    game_state.world.register::<WantsToDrinkPotion>();
+    game_state.world.register::<WantsToDropItem>();
     
     
     let map: Map = Map::map_with_rooms_and_corridors();

@@ -81,6 +81,8 @@ pub fn player_input(game_state: &mut State, context: &mut Rltk) -> RunState{
 
             VirtualKeyCode::I => return RunState::InInventory,
 
+            VirtualKeyCode::R => return RunState::ShowDropItem,
+
             _ => { return RunState::AwaitingInput; }, // if irrelevant key pressed, nothing for game to update on
         },
     }
@@ -109,7 +111,7 @@ pub fn pickup_item(world: &mut World){
     match target_item{
         None => gamelog.entries.push("Nothing to pick up here...".to_string()),
         Some(item) => {
-            pick_up_items.insert(item, WantsToPickUpItem { collected_by: *player_entity, item: item })
+            pick_up_items.insert(item, WantsToPickUpItem { collected_by: *player_entity, item })
                 .expect("Unable to pick up item by player.");
         },
     }

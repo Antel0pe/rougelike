@@ -106,13 +106,14 @@ pub enum ItemMenuResult{
     Selected,
 }
 
-pub fn show_inventory(world: &mut World, context: &mut Rltk) -> ItemMenuResult{
+pub fn show_inventory(world: &mut World, context: &mut Rltk) -> (ItemMenuResult, Option<Entity>){
     let player_entity = world.fetch::<Entity>();
     let names = world.read_storage::<Name>();
     let backpacks = world.read_storage::<InBackpack>();
+    let entities = world.entities();
 
-    let number_of_items = (&backpacks).join()
-        .filter(|backpack| backpack.owner == *player_entity)
+    let number_of_items = (&backpacks, &names).join()
+        .filter(|(backpack, _name)| backpack.owner == *player_entity)
         .count();
 
     let mut y = (25 - (number_of_items/2)) as i32;
@@ -121,24 +122,79 @@ pub fn show_inventory(world: &mut World, context: &mut Rltk) -> ItemMenuResult{
     context.print_color(18, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Inventory");
     context.print_color(18, y+number_of_items as i32 + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Escape to exit");
 
-    let mut j = 0;
-    for (name, _backpack) in (&names, &backpacks).join(){
+    let mut item_menu: Vec<Entity> = Vec::new();
+    for (j, (name, _backpack, entity)) in (&names, &backpacks, &entities).join().enumerate(){
         context.set(17, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437('('));
         context.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
         context.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
 
         context.print(21, y, &name.name);
 
+        item_menu.push(entity);
+
         y += 1;
-        j += 1;
     }
 
     match context.key{
-        None => ItemMenuResult::NoResponse,
+        None => (ItemMenuResult::NoResponse, None),
         Some(key) => match key{
-            VirtualKeyCode::Escape => ItemMenuResult::Exit,
-            _ => ItemMenuResult::NoResponse,
+            VirtualKeyCode::Escape => (ItemMenuResult::Exit, None),
+            _ => {
+                let selection = rltk::letter_to_option(key);
+                if 0 <= selection && selection < item_menu.len() as i32{
+                    return (ItemMenuResult::Selected, Some(item_menu[selection as usize]));
+                }
+                (ItemMenuResult::NoResponse, None)
+            },
         }
     }
 
+}
+
+pub fn show_drop_item_menu(world: &mut World, context: &mut Rltk) -> (ItemMenuResult, Option<Entity>){
+    let player_entity = world.fetch::<Entity>();
+    let names = world.read_storage::<Name>();
+    let backpack = world.read_storage::<InBackpack>();
+    let entities = world.entities();
+
+    let inventory_count = (&names, &backpack).join()
+        .filter(|(_name, pack)| pack.owner == *player_entity)
+        .count() as i32;
+
+    let mut y = 25 - (inventory_count/2);
+
+    context.draw_box(15, y-2, 31, inventory_count+3, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+    context.print_color(18, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Drop which item?");
+    context.print_color(18, y+inventory_count+1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Escape to cancel");
+
+    let mut items: Vec<Entity> = Vec::new();
+    for (j, (entity, _backpack, name)) in (&entities, &backpack, &names).join().filter(|item| item.1.owner == *player_entity).enumerate(){
+
+        context.set(17, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437('('));
+        context.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
+        context.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
+
+        context.print(21, y, name.name.to_string());
+        
+        items.push(entity);
+
+        y+=1;
+    }
+
+    match context.key {
+        None => (ItemMenuResult::NoResponse, None),
+        Some(key) => {
+            match key {
+                VirtualKeyCode::Escape => (ItemMenuResult::Exit, None),
+                _ => {
+                    let selection = rltk::letter_to_option(key);
+                    if selection >= 0 && selection < inventory_count{
+                        return (ItemMenuResult::Selected, Some(items[selection as usize]));
+                    } 
+                    
+                    (ItemMenuResult::NoResponse, None)
+                }
+            }
+        }
+    }
 }

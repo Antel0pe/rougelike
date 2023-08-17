@@ -1,6 +1,6 @@
 use specs::prelude::*;
 
-use crate::{GameLog, WantsToPickUpItem, Position, InBackpack, Name};
+use crate::{GameLog, WantsToPickUpItem, Position, InBackpack, Name, WantsToDrinkPotion, CombatStats, HealthPotion, WantsToDropItem};
 
 pub struct ItemCollectionSystem{ }
 
@@ -27,5 +27,76 @@ impl<'a> System<'a> for ItemCollectionSystem{
         }
 
         wants_to_pickup_item.clear();
+    }
+}
+
+pub struct DrinkPotionSystem{ }
+
+impl<'a> System<'a> for DrinkPotionSystem{
+    type SystemData = ( WriteExpect<'a, GameLog>,
+                        Entities<'a>,
+                        ReadStorage<'a, Name>,
+                        WriteStorage<'a, WantsToDrinkPotion>,
+                        WriteStorage<'a, CombatStats>,
+                        ReadExpect<'a, Entity>,
+                        ReadStorage<'a, HealthPotion>
+                     );
+
+    fn run(&mut self, data: Self::SystemData) {
+        let (mut gamelog, entities, names, mut wants_to_drink_potion, mut combat_stats, player_entity, health_potions) = data;
+
+        for (entity, drink_potion, stats) in (&entities, &wants_to_drink_potion, &mut combat_stats).join(){
+            let potion = health_potions.get(drink_potion.potion);
+
+            match potion{
+                None => {},
+                Some(potion) => {
+                    stats.hp = i32::min(stats.max_hp, stats.hp + potion.heal_amount);
+
+                    if entity == *player_entity{
+                        gamelog.entries.push(format!("You drink the {} for {} hp", names.get(drink_potion.potion).unwrap().name, potion.heal_amount));
+                    }
+                    
+                    entities.delete(drink_potion.potion)
+                        .expect("Could not delete health potion entity.");
+                }
+            }
+        }
+
+        wants_to_drink_potion.clear();
+    }
+}
+
+pub struct ItemDropSystem{ }
+
+impl<'a> System<'a> for ItemDropSystem{
+    type SystemData = ( ReadExpect<'a, Entity>,
+                        Entities<'a>,
+                        WriteStorage<'a, WantsToDropItem>,
+                        WriteStorage<'a, InBackpack>,
+                        WriteStorage<'a, Position>,
+                        ReadStorage<'a, Name>,
+                        WriteExpect<'a, GameLog>,
+                    );
+
+    fn run(&mut self, data: Self::SystemData) {
+        let (player_entity, entities, mut wants_to_drop_item, mut in_backpack, mut positions, names, mut gamelog) = data;
+
+
+        for (item, entity) in (&wants_to_drop_item, &entities).join(){
+            let dropped_position: &Position = positions.get(entity).unwrap();
+
+            positions.insert(item.item, Position { x: dropped_position.x, y: dropped_position.y })
+                .expect("Unable to drop item.");
+            
+            in_backpack.remove(item.item);
+
+            if entity == *player_entity{
+                gamelog.entries.push(format!("You drop a {}", names.get(item.item).unwrap().name));
+            }
+
+        }
+
+        wants_to_drop_item.clear();
     }
 }

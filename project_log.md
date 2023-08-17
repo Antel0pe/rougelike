@@ -35,3 +35,10 @@ dd/mm/yy
 - Added health potion item + spawning
 - Picking up items
 - Listing inventory in GUI
+
+16/08/23
+- Drink health potion and restore hp
+
+17/08/23
+- Drop items
+- Refactor render order of entities
