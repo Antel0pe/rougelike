@@ -71,7 +71,7 @@ impl State{
         let mut item_collection_system = ItemCollectionSystem{ };
         item_collection_system.run_now(&self.world);
 
-        let mut drink_potion_system = DrinkPotionSystem{ };
+        let mut drink_potion_system = ItemUseSystem{ };
         drink_potion_system.run_now(&self.world);
 
         let mut item_drop_system = ItemDropSystem{ };
@@ -196,7 +196,7 @@ fn main() -> rltk::BError {
     game_state.world.register::<WantsToMelee>();
     game_state.world.register::<SuffersDamage>();
     game_state.world.register::<Item>();
-    game_state.world.register::<HealthPotion>();
+    game_state.world.register::<ProvidesHealing>();
     game_state.world.register::<InBackpack>();
     game_state.world.register::<WantsToPickUpItem>();
     game_state.world.register::<WantsToDrinkPotion>();

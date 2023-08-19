@@ -1,4 +1,4 @@
-use crate::HealthPotion;
+use crate::ProvidesHealing;
 
 use super::{Player, Position, Renderable, FOV, Name, CombatStats, Monster, BlocksTile, Rect, Item};
 use specs::prelude::*;
@@ -34,7 +34,7 @@ pub fn health_potion(world: &mut World, x: i32, y: i32){
         })
         .with(Name{ name: "Health Potion".to_string() })
         .with(Item{ })
-        .with(HealthPotion{ heal_amount: 8 })
+        .with(ProvidesHealing{ heal_amount: 8 })
         .build();
 }
 

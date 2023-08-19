@@ -1,6 +1,6 @@
 use specs::prelude::*;
 
-use crate::{GameLog, WantsToPickUpItem, Position, InBackpack, Name, WantsToDrinkPotion, CombatStats, HealthPotion, WantsToDropItem};
+use crate::{GameLog, WantsToPickUpItem, Position, InBackpack, Name, WantsToDrinkPotion, CombatStats, ProvidesHealing, WantsToDropItem, Consumable};
 
 pub struct ItemCollectionSystem{ }
 
@@ -30,23 +30,24 @@ impl<'a> System<'a> for ItemCollectionSystem{
     }
 }
 
-pub struct DrinkPotionSystem{ }
+pub struct ItemUseSystem{ }
 
-impl<'a> System<'a> for DrinkPotionSystem{
+impl<'a> System<'a> for ItemUseSystem{
     type SystemData = ( WriteExpect<'a, GameLog>,
                         Entities<'a>,
                         ReadStorage<'a, Name>,
                         WriteStorage<'a, WantsToDrinkPotion>,
                         WriteStorage<'a, CombatStats>,
                         ReadExpect<'a, Entity>,
-                        ReadStorage<'a, HealthPotion>
+                        ReadStorage<'a, ProvidesHealing>,
+                        ReadStorage<'a, Consumable>,
                      );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut gamelog, entities, names, mut wants_to_drink_potion, mut combat_stats, player_entity, health_potions) = data;
+        let (mut gamelog, entities, names, mut wants_to_drink_potion, mut combat_stats, player_entity, provides_healing, consumables) = data;
 
         for (entity, drink_potion, stats) in (&entities, &wants_to_drink_potion, &mut combat_stats).join(){
-            let potion = health_potions.get(drink_potion.potion);
+            let potion = provides_healing.get(drink_potion.potion);
 
             match potion{
                 None => {},
@@ -55,10 +56,15 @@ impl<'a> System<'a> for DrinkPotionSystem{
 
                     if entity == *player_entity{
                         gamelog.entries.push(format!("You drink the {} for {} hp", names.get(drink_potion.potion).unwrap().name, potion.heal_amount));
-                    }
-                    
+                    }     
+                }
+            }
+
+            match consumables.get(drink_potion.potion){
+                None => {},
+                Some(_) => {
                     entities.delete(drink_potion.potion)
-                        .expect("Could not delete health potion entity.");
+                        .expect("Could not delete consumable entity.");
                 }
             }
         }

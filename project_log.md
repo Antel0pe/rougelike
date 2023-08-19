@@ -42,3 +42,6 @@ dd/mm/yy
 17/08/23
 - Drop items
 - Refactor render order of entities
+
+18/08/23
+- Refactoring health potion to generalized providesHealing
