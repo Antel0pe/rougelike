@@ -1,4 +1,4 @@
-use crate::ProvidesHealing;
+use crate::{ProvidesHealing, Consumable, Ranged, InflictsDamage, AreaOfEffect, CausesConfusion, GivesMovementSpeed};
 
 use super::{Player, Position, Renderable, FOV, Name, CombatStats, Monster, BlocksTile, Rect, Item};
 use specs::prelude::*;
@@ -35,6 +35,75 @@ pub fn health_potion(world: &mut World, x: i32, y: i32){
         .with(Name{ name: "Health Potion".to_string() })
         .with(Item{ })
         .with(ProvidesHealing{ heal_amount: 8 })
+        .with(Consumable{ charges: 3 })
+        .build();
+}
+
+pub fn magic_missile_scroll(world: &mut World, x: i32, y: i32){
+    world.create_entity()
+        .with(Position{ x, y })
+        .with(Renderable{
+            symbol: rltk::to_cp437(')'),
+            foreground: RGB::named(rltk::CYAN),
+            background: RGB::named(rltk::BLACK),
+            render_order: 2,
+        })
+        .with(Name{ name: "Magic Missile Scroll".to_string() })
+        .with(Item{ })
+        .with(Consumable{ charges: 1 })
+        .with(Ranged{ range: 6 })
+        .with(InflictsDamage{ damage: 8 })
+        .build();
+}
+
+pub fn fireball_spell(world: &mut World, x: i32, y: i32){
+    world.create_entity()
+        .with(Position{ x, y })
+        .with(Renderable{
+            symbol: rltk::to_cp437(')'),
+            foreground: RGB::named(rltk::ORANGE),
+            background: RGB::named(rltk::BLACK),
+            render_order: 2,
+        })
+        .with(Name{ name: "Fireball spell".to_string() })
+        .with(Item{ })
+        .with(Consumable{ charges: 1 })
+        .with(Ranged{ range: 6 })
+        .with(InflictsDamage{ damage: 20 })
+        .with(AreaOfEffect{ radius: 3 })
+        .build();
+}
+
+pub fn confusion_spell(world: &mut World, x: i32, y: i32){
+    world.create_entity()
+        .with(Position{ x, y })
+        .with(Renderable{
+            symbol: rltk::to_cp437(')'),
+            foreground: RGB::named(rltk::PINK),
+            background: RGB::named(rltk::BLACK),
+            render_order: 2,
+        })
+        .with(Name{ name: "Confusion spell".to_string() })
+        .with(Item{ })
+        .with(Consumable{ charges: 1 })
+        .with(Ranged{ range: 6 })
+        .with(CausesConfusion{ turns: 3 })
+        .build();
+}
+
+pub fn dash_boots(world: &mut World, x: i32, y: i32){
+    world.create_entity()
+        .with(Position{ x, y })
+        .with(Renderable{
+            symbol: rltk::to_cp437('b'),
+            foreground: RGB::named(rltk::BROWN1),
+            background: RGB::named(rltk::BLACK),
+            render_order: 2,
+        })
+        .with(Name{ name: "Dash boots".to_string() })
+        .with(Item{ })
+        .with(Consumable{ charges: 1 })
+        .with(GivesMovementSpeed{ speed_modifier: 2, turns: 3 })
         .build();
 }
 
@@ -81,9 +150,26 @@ pub fn spawn_entities_in_room(world: &mut World, room: &Rect){
     }
 
     for (x, y) in item_spawn_points.iter(){
-        health_potion(world, *x, *y);
+        random_item(world, *x, *y);
     }
 
+}
+
+pub fn random_item(world: &mut World, x: i32, y: i32){
+    let roll: i32;
+
+    {
+        let mut rng = world.write_resource::<RandomNumberGenerator>();
+        roll = rng.roll_dice(1, 5);
+    }
+
+    match roll{
+        1 => health_potion(world, x, y),
+        2 => fireball_spell(world, x, y),
+        3 => confusion_spell(world, x, y),
+        4 => dash_boots(world, x, y),
+        _ => magic_missile_scroll(world, x, y),
+    }
 }
 
 pub fn random_monster(world: &mut World, x: i32, y: i32) -> Entity{

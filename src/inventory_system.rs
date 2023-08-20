@@ -1,6 +1,6 @@
 use specs::prelude::*;
 
-use crate::{GameLog, WantsToPickUpItem, Position, InBackpack, Name, WantsToDrinkPotion, CombatStats, ProvidesHealing, WantsToDropItem, Consumable};
+use crate::{GameLog, WantsToPickUpItem, Position, InBackpack, Name, WantsToUseItem, CombatStats, ProvidesHealing, WantsToDropItem, InflictsDamage, Map, SuffersDamage, Consumable, AreaOfEffect, CausesConfusion, IsConfused, GivesMovementSpeed, HasMovementSpeedModifier};
 
 pub struct ItemCollectionSystem{ }
 
@@ -36,40 +36,139 @@ impl<'a> System<'a> for ItemUseSystem{
     type SystemData = ( WriteExpect<'a, GameLog>,
                         Entities<'a>,
                         ReadStorage<'a, Name>,
-                        WriteStorage<'a, WantsToDrinkPotion>,
+                        WriteStorage<'a, WantsToUseItem>,
                         WriteStorage<'a, CombatStats>,
                         ReadExpect<'a, Entity>,
                         ReadStorage<'a, ProvidesHealing>,
-                        ReadStorage<'a, Consumable>,
+                        ReadStorage<'a, InflictsDamage>,
+                        ReadExpect<'a, Map>,
+                        WriteStorage<'a, SuffersDamage>,
+                        WriteStorage<'a, Consumable>,
+                        ReadStorage<'a, AreaOfEffect>,
+                        ReadStorage<'a, CausesConfusion>,
+                        WriteStorage<'a, IsConfused>,
+                        ReadStorage<'a, GivesMovementSpeed>,
+                        WriteStorage<'a, HasMovementSpeedModifier>,
                      );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut gamelog, entities, names, mut wants_to_drink_potion, mut combat_stats, player_entity, provides_healing, consumables) = data;
+        let (
+            mut gamelog,
+            entities, names,
+            mut wants_to_use_item,
+            mut combat_stats,
+            player_entity,
+            provides_healing,
+            inflicts_damage,
+            map,
+            mut suffers_damage,
+            mut consumables,
+            area_of_effect,
+            causes_confusion,
+            mut is_confused,
+            gives_movement_speed,
+            mut has_movement_speed_modifier,
+        ) = data;
 
-        for (entity, drink_potion, stats) in (&entities, &wants_to_drink_potion, &mut combat_stats).join(){
-            let potion = provides_healing.get(drink_potion.potion);
+        for (entity, use_item) in (&entities, &wants_to_use_item).join(){
+            let mut used_item = false;
 
-            match potion{
-                None => {},
-                Some(potion) => {
-                    stats.hp = i32::min(stats.max_hp, stats.hp + potion.heal_amount);
-
-                    if entity == *player_entity{
-                        gamelog.entries.push(format!("You drink the {} for {} hp", names.get(drink_potion.potion).unwrap().name, potion.heal_amount));
-                    }     
+            // find targets
+            let mut targets: Vec<Entity> = Vec::new();
+            match use_item.target{
+                // self targeted effect
+                None => {
+                    targets.push(*player_entity);
+                },
+                Some(target) => {
+                    match area_of_effect.get(use_item.item){
+                        // single target effect
+                        None => {   
+                            let map_idx = map.xy_idx(target.x, target.y);
+                            targets.extend(map.tile_content[map_idx].iter());
+                        },
+                        Some(aoe) =>{
+                            let effect_radius = rltk::field_of_view(target, aoe.radius, &*map);
+                            targets = effect_radius.iter() // for each point fov
+                                .filter(|p| Map::is_idx_valid(p.x, p.y)) // filter those that are valid idx
+                                .map(|p| map.xy_idx(p.x, p.y)) // map them to 1d idx
+                                .fold(targets, |mut acc, idx|{ // add all mobs in that tile
+                                    acc.extend(map.tile_content[idx].iter());
+                                    acc
+                                });
+                        }
+                    }
                 }
             }
 
-            match consumables.get(drink_potion.potion){
-                None => {},
-                Some(_) => {
-                    entities.delete(drink_potion.potion)
+            if let Some(confusing_item) = causes_confusion.get(use_item.item){
+                for target in targets.iter(){
+                    is_confused.insert(*target, IsConfused { turns: confusing_item.turns })
+                        .expect("Could not add is confused component to target.");
+
+                    if entity == *player_entity{
+                        gamelog.entries.push(format!("You use {} on {} confusing them for {} turns",
+                            names.get(use_item.item).unwrap().name, names.get(*target).unwrap().name, confusing_item.turns));
+                    }
+                }
+
+                used_item = true;
+            }
+
+            if let Some(movement_speed_item) = gives_movement_speed.get(use_item.item){
+                for target in targets.iter(){
+                    has_movement_speed_modifier.insert(*target, HasMovementSpeedModifier { speed_modifier: movement_speed_item.speed_modifier, max_turns: movement_speed_item.turns, turns_used: 0 })
+                        .expect("Could not add movement speed modifier.");
+
+                    if entity == *player_entity{
+                        gamelog.entries.push(format!("You use {} to gain a movement speed of x{} for {} turns",
+                            names.get(use_item.item).unwrap().name, movement_speed_item.speed_modifier, movement_speed_item.turns));
+                    }
+                }
+
+                used_item = true;
+            }
+
+            if let Some(potion) = provides_healing.get(use_item.item){
+                for target in targets.iter(){
+                    if let Some(stats) = combat_stats.get_mut(*target){
+                        stats.hp = i32::min(stats.max_hp, stats.hp + potion.heal_amount);
+
+                        if entity == *player_entity{
+                            gamelog.entries.push(format!("You drink the {} for {} hp", names.get(use_item.item).unwrap().name, potion.heal_amount));
+                        }  
+                    }   
+                }
+
+                used_item = true;
+            }
+
+            if let Some(item) = inflicts_damage.get(use_item.item){
+                for mob in targets.iter(){
+                    SuffersDamage::new_damage(&mut suffers_damage, *mob, item.damage);
+
+                    if entity == *player_entity{
+                        gamelog.entries.push(format!("You hit {} for {} hp with {}.",
+                            names.get(*mob).unwrap().name, item.damage, names.get(use_item.item).unwrap().name));
+                    }
+                }
+
+                used_item = true;
+            }
+
+            if !used_item{ return; }
+
+            if let Some(consumable_item) = consumables.get_mut(use_item.item){
+                consumable_item.charges -= 1;
+
+                if consumable_item.charges <= 0{
+                    entities.delete(use_item.item)
                         .expect("Could not delete consumable entity.");
                 }
             }
         }
 
-        wants_to_drink_potion.clear();
+        wants_to_use_item.clear();
     }
 }
 

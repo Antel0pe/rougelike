@@ -15,15 +15,26 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, world: &mut World){
     let mut player_position = world.write_resource::<Point>();
     let combat_stats = world.read_storage::<CombatStats>();
     let mut wants_to_melee = world.write_storage::<WantsToMelee>();
+    let mut has_movement_speed_modifier = world.write_storage::<HasMovementSpeedModifier>();
 
     let entities = world.entities();
 
     let map = world.fetch::<Map>();
 
     for (_player, pos, fov, entity) in (&mut players, &mut positions, &mut fov, &entities).join(){
+        let mut modified_delta_x = delta_x;
+        let mut modified_delta_y = delta_y;
+
+        if let Some(movement_speed_modifer) = has_movement_speed_modifier.get_mut(entity){
+            modified_delta_x *= movement_speed_modifer.speed_modifier;
+            modified_delta_y *= movement_speed_modifer.speed_modifier;
+
+            movement_speed_modifer.turns_used += 1;
+        }
+
         // this never returns an out of bounds check because there is a wall around the border
         // the max possible value of pos.x is 78 and pos.y 48
-        let destination_map_idx = map.xy_idx(pos.x+delta_x, pos.y-delta_y);
+        let destination_map_idx = map.xy_idx(pos.x+modified_delta_x, pos.y-modified_delta_y);
 
         // for each entity in the destination tile, see if they have combat stats. If they do fight them
         for potential_target in map.tile_content[destination_map_idx].iter(){
@@ -38,8 +49,8 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, world: &mut World){
 
         if !map.blocked_tiles[destination_map_idx]{
             // neat way to do create valid bounds for min and max
-            pos.x = min(map.width-1, max(0, pos.x+delta_x));
-            pos.y = min(map.height-1, max(0, pos.y-delta_y));
+            pos.x = min(map.width-1, max(0, pos.x+modified_delta_x));
+            pos.y = min(map.height-1, max(0, pos.y-modified_delta_y));
 
             // update player position
             player_position.x = pos.x;

@@ -44,4 +44,15 @@ dd/mm/yy
 - Refactor render order of entities
 
 18/08/23
-- Refactoring health potion to generalized providesHealing
+- Refactoring health potion to generalized ProvidesHealing
+
+19/08/23
+- Generalized WantsToDrinkPotion into WantsToUseItem
+- Added ranged targeting + inflicts damage component
+- Display ranged targeting
+- Consumables can have multiple charges now
+
+20/08/23
+- Added AOE component and spell fireball that ONE SHOTS mobs MUAHAHAHAHA
+- Added Confusion component and spell to prevent monsters from attacking for a few turns
+- Added dash boots with move speed modifiers

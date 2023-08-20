@@ -91,8 +91,9 @@ pub struct WantsToPickUpItem{
 }
 
 #[derive(Component, Debug)]
-pub struct WantsToDrinkPotion{
-    pub potion: Entity,
+pub struct WantsToUseItem{
+    pub item: Entity,
+    pub target: Option<rltk::Point>,
 }
 
 #[derive(Component, Debug, Clone)]
@@ -102,5 +103,48 @@ pub struct WantsToDropItem{
 
 #[derive(Component, Debug)]
 pub struct Consumable{
+    pub charges: i32,
+}
 
+#[derive(Component, Debug)]
+pub struct Ranged{
+    pub range: i32,
+}
+
+#[derive(Component, Debug)]
+pub struct InflictsDamage{
+    pub damage: i32,
+}
+
+#[derive(Component, Debug)]
+pub struct MovementItem{
+
+}
+
+#[derive(Component, Debug)]
+pub struct AreaOfEffect{
+    pub radius: i32,
+}
+
+#[derive(Component, Debug)]
+pub struct CausesConfusion{
+    pub turns: i32,
+}
+
+#[derive(Component, Debug)]
+pub struct IsConfused{
+    pub turns: i32,
+}
+
+#[derive(Component, Debug)]
+pub struct GivesMovementSpeed{
+    pub speed_modifier: i32,
+    pub turns: i32,
+}
+
+#[derive(Component, Debug)]
+pub struct HasMovementSpeedModifier{
+    pub speed_modifier: i32,
+    pub max_turns: i32,
+    pub turns_used: i32,
 }

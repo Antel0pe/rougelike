@@ -1,7 +1,7 @@
 use specs::{World, WorldExt, Join, Entity};
-use rltk::{Rltk, RGB, VirtualKeyCode};
+use rltk::{Rltk, RGB, VirtualKeyCode, Point};
 
-use crate::{CombatStats, Player, GameLog, Name, Position, Map, InBackpack};
+use crate::{CombatStats, Player, GameLog, Name, Position, Map, InBackpack, FOV, Consumable};
 
 pub fn draw_ui(world: &World, context: &mut Rltk){
     // draw box around bottom bit of screen
@@ -111,6 +111,7 @@ pub fn show_inventory(world: &mut World, context: &mut Rltk) -> (ItemMenuResult,
     let names = world.read_storage::<Name>();
     let backpacks = world.read_storage::<InBackpack>();
     let entities = world.entities();
+    let consumable_items = world.read_storage::<Consumable>();
 
     let number_of_items = (&backpacks, &names).join()
         .filter(|(backpack, _name)| backpack.owner == *player_entity)
@@ -118,7 +119,7 @@ pub fn show_inventory(world: &mut World, context: &mut Rltk) -> (ItemMenuResult,
 
     let mut y = (25 - (number_of_items/2)) as i32;
 
-    context.draw_box(15, y-2, 31, number_of_items+3, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+    context.draw_box(15, y-2, 40, number_of_items+3, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
     context.print_color(18, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Inventory");
     context.print_color(18, y+number_of_items as i32 + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Escape to exit");
 
@@ -128,7 +129,11 @@ pub fn show_inventory(world: &mut World, context: &mut Rltk) -> (ItemMenuResult,
         context.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
         context.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
 
-        context.print(21, y, &name.name);
+        let mut item_string = name.name.clone();
+        if let Some(consumable) = consumable_items.get(entity){
+            item_string += &format!(" - {} charge(s)", consumable.charges);
+        }
+        context.print(21, y, item_string);
 
         item_menu.push(entity);
 
@@ -197,4 +202,48 @@ pub fn show_drop_item_menu(world: &mut World, context: &mut Rltk) -> (ItemMenuRe
             }
         }
     }
+}
+
+pub fn show_ranged_targeting(world: &mut World, context: &mut Rltk, ranged_item_range: i32) -> (ItemMenuResult, Option<Point>){
+    let player_entity = world.fetch::<Entity>();
+    let player_point = world.fetch::<Point>();
+    let fov = world.read_storage::<FOV>();
+
+    context.print_color(5, 0, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Select a target");
+    
+    let mut tiles_in_range: Vec<Point> = Vec::new();
+    
+    if let Some(player_fov) = fov.get(*player_entity){
+        for visible_point in player_fov.visible_tiles.iter(){
+            let distance_to_tile = rltk::DistanceAlg::Pythagoras.distance2d(*player_point, *visible_point);
+
+            if distance_to_tile < ranged_item_range as f32 {
+                context.set_bg(visible_point.x, visible_point.y, RGB::named(rltk::BLUE));
+                tiles_in_range.push(*visible_point);
+            }
+        }
+    } else {
+        return (ItemMenuResult::NoResponse, None);
+    }
+
+    let mouse_position = context.mouse_point();
+    let is_selected_target_valid = tiles_in_range.iter()
+        .any(|tile| tile.x == mouse_position.x && tile.y == mouse_position.y);
+
+    if is_selected_target_valid{
+        context.set_bg(mouse_position.x, mouse_position.y, RGB::named(rltk::CYAN));
+        
+        if context.left_click{
+            return (ItemMenuResult::Selected, Some(mouse_position));
+        }
+    } else {
+        context.set_bg(mouse_position.x, mouse_position.y, RGB::named(rltk::RED));
+
+        if context.left_click{
+            return (ItemMenuResult::Exit, None);
+        }
+    }
+
+
+    (ItemMenuResult::NoResponse, None)
 }

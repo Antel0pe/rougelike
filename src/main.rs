@@ -28,6 +28,8 @@ mod spawner;
 pub use crate::spawner::*;
 mod inventory_system;
 pub use crate::inventory_system::*;
+mod movement_speed_modifier;
+pub use crate::movement_speed_modifier::*;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum RunState{
@@ -37,6 +39,7 @@ pub enum RunState{
     MonsterTurn, // run and update monsters
     InInventory,
     ShowDropItem,
+    ShowTargetting{ range: i32, item: Entity, },
 }
 
 pub struct State {
@@ -71,11 +74,14 @@ impl State{
         let mut item_collection_system = ItemCollectionSystem{ };
         item_collection_system.run_now(&self.world);
 
-        let mut drink_potion_system = ItemUseSystem{ };
-        drink_potion_system.run_now(&self.world);
+        let mut item_use_system = ItemUseSystem{ };
+        item_use_system.run_now(&self.world);
 
         let mut item_drop_system = ItemDropSystem{ };
         item_drop_system.run_now(&self.world);
+
+        let mut movement_speed_modifier = MovementSpeedModifier{ };
+        movement_speed_modifier.run_now(&self.world);
 
         self.world.maintain();
     }
@@ -85,6 +91,7 @@ impl GameState for State {
         context.cls();
         
         draw_map(&self.world, context);
+        gui::draw_ui(&self.world, context);
 
         let mut run_state = *self.world.fetch::<RunState>();
 
@@ -111,13 +118,20 @@ impl GameState for State {
                     ItemMenuResult::Exit => run_state = RunState::AwaitingInput,
                     ItemMenuResult::NoResponse => {},
                     ItemMenuResult::Selected => {
-                        let potion_entity = selected_entity.unwrap();
-                        let mut wants_to_drink_potions = self.world.write_storage::<WantsToDrinkPotion>();
+                        let selected_item = selected_entity.unwrap();
+                        let ranged_items = self.world.read_storage::<Ranged>();
 
-                        wants_to_drink_potions.insert(*self.world.fetch::<Entity>(), WantsToDrinkPotion { potion: potion_entity })
-                            .expect("Unable to insert intent to drink potion for player.");
+                        if let Some(ranged_item) = ranged_items.get(selected_item){
+                            run_state = RunState::ShowTargetting { range: ranged_item.range, item: selected_item }
+                        } else {
+                            let mut wants_to_use_item = self.world.write_storage::<WantsToUseItem>();
+    
+                            wants_to_use_item.insert(*self.world.fetch::<Entity>(), WantsToUseItem { item: selected_item, target: None })
+                                .expect("Unable to insert intent to use item for player.");
+    
+                            run_state = RunState::PlayerTurn;
+                        }
 
-                        run_state = RunState::PlayerTurn;
                     }
                 }
             },
@@ -137,7 +151,22 @@ impl GameState for State {
                         run_state = RunState::PlayerTurn;
                     },
                 }
-            }
+            },
+            RunState::ShowTargetting { range, item } => {
+                let (item_menu_result, selected_point) = gui::show_ranged_targeting(&mut self.world, context, range);
+
+                match item_menu_result{
+                    ItemMenuResult::Exit => run_state = RunState::AwaitingInput,
+                    ItemMenuResult::NoResponse => {},
+                    ItemMenuResult::Selected => {
+                        let mut wants_to_use_item = self.world.write_storage::<WantsToUseItem>();
+                        wants_to_use_item.insert(*self.world.fetch::<Entity>(), WantsToUseItem { item: item, target: selected_point })
+                            .expect("Could not use targeted item");
+                        run_state = RunState::PlayerTurn;
+
+                    }
+                }
+            },
         }
 
         {
@@ -147,10 +176,6 @@ impl GameState for State {
 
         // delete dead entities
         delete_dead_entities(&mut self.world);
-
-        // draw gui
-        gui::draw_ui(&self.world, context);
-        
 
         // render entities with renderable and position components
         let positions = self.world.read_storage::<Position>();
@@ -199,8 +224,16 @@ fn main() -> rltk::BError {
     game_state.world.register::<ProvidesHealing>();
     game_state.world.register::<InBackpack>();
     game_state.world.register::<WantsToPickUpItem>();
-    game_state.world.register::<WantsToDrinkPotion>();
+    game_state.world.register::<WantsToUseItem>();
     game_state.world.register::<WantsToDropItem>();
+    game_state.world.register::<Consumable>();
+    game_state.world.register::<Ranged>();
+    game_state.world.register::<InflictsDamage>();
+    game_state.world.register::<AreaOfEffect>();
+    game_state.world.register::<CausesConfusion>();
+    game_state.world.register::<IsConfused>();
+    game_state.world.register::<GivesMovementSpeed>();
+    game_state.world.register::<HasMovementSpeedModifier>();
     
     
     let map: Map = Map::map_with_rooms_and_corridors();

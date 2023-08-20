@@ -12,6 +12,7 @@ impl<'a> System<'a> for MonsterAI{
                         Entities<'a>, // gets all entities
                         ReadExpect<'a, Entity>, // gets player entity resource
                         ReadExpect<'a, RunState>,
+                        WriteStorage<'a, IsConfused>,
                     );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -24,11 +25,27 @@ impl<'a> System<'a> for MonsterAI{
              entities,
              player_entity,
              run_state,
+             mut is_confused,
             ) = data;
 
         if *run_state != RunState::MonsterTurn{ return; }
 
         for(_monster, fov, pos, entity) in (&monsters, &mut fov, &mut position, &entities).join(){
+
+            let mut monster_can_act = true;
+
+            if let Some(confused_monster) = is_confused.get_mut(entity){
+                confused_monster.turns -= 1;
+
+                if confused_monster.turns <= 0{
+                    is_confused.remove(entity);
+                } else {
+                    monster_can_act = false; // monster is still confused
+                }
+            }
+
+            if !monster_can_act{ return; }
+
             let distance = rltk::DistanceAlg::Pythagoras.distance2d(Point { x: pos.x, y: pos.y }, *player_position);
             if distance < 1.5{
                 wants_to_melee.insert(entity, WantsToMelee { target: *player_entity })
