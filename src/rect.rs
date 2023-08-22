@@ -1,6 +1,8 @@
+use serde::{Serialize, Deserialize};
+
 // Made up of 2 coordinate pairs
 // (x1, y1) and (x2, y2) which represent top left and bottom right points of rectangle
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Rect{
     pub x1: i32,
     pub x2: i32,

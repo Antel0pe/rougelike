@@ -1,6 +1,8 @@
 use rltk::{GameState, Rltk, RltkBuilder, Point};
 use specs::prelude::*;
+use specs::saveload::{SimpleMarker, SimpleMarkerAllocator};
 
+extern crate serde;
 
 mod map;
 pub use crate::map::*;
@@ -30,6 +32,9 @@ mod inventory_system;
 pub use crate::inventory_system::*;
 mod movement_speed_modifier;
 pub use crate::movement_speed_modifier::*;
+mod save_system;
+pub use crate::save_system::*;
+
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum RunState{
@@ -40,6 +45,8 @@ pub enum RunState{
     InInventory,
     ShowDropItem,
     ShowTargetting{ range: i32, item: Entity, },
+    MainMenu{ menu_selection: gui::MainMenuSelection },
+    SaveGame,
 }
 
 pub struct State {
@@ -89,11 +96,33 @@ impl State{
 impl GameState for State {
     fn tick(&mut self, context : &mut Rltk) {
         context.cls();
-        
-        draw_map(&self.world, context);
-        gui::draw_ui(&self.world, context);
-
+    
         let mut run_state = *self.world.fetch::<RunState>();
+
+        // don't do rendering if we are in main menu
+        match run_state {
+            RunState::MainMenu { .. } => {},
+            _ => {
+                draw_map(&self.world, context);
+                gui::draw_ui(&self.world, context);
+
+                // render entities with renderable and position components
+                let positions = self.world.read_storage::<Position>();
+                let renderables = self.world.read_storage::<Renderable>();
+                let map = self.world.fetch::<Map>();
+
+                let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
+                data.sort_by(|&a, &b| b.1.render_order.cmp(&a.1.render_order));
+
+                for (pos, render) in data.iter(){
+                    let idx = map.xy_idx(pos.x, pos.y);
+                    if map.currently_visible_tiles[idx]{
+                        context.set(pos.x, pos.y, render.foreground, render.background, render.symbol);
+                    }
+                    
+                }
+            }
+        }
 
         match run_state{
             RunState::PreRun => {
@@ -167,6 +196,32 @@ impl GameState for State {
                     }
                 }
             },
+            RunState::MainMenu { .. } => {
+                let selection = gui::main_menu(&mut self.world, context);
+
+                match selection {
+                    MainMenuResult::NoSelection { selected } =>{
+                        run_state = RunState::MainMenu { menu_selection: selected };
+                    },
+                    MainMenuResult::Selected { selected } =>{
+                        match selected{
+                            MainMenuSelection::NewGame =>{
+                                run_state = RunState::PreRun;
+                            },
+                            MainMenuSelection::LoadGame =>{
+                                run_state = RunState::PreRun;
+                            },
+                            MainMenuSelection::Quit =>{
+                                ::std::process::exit(0);
+                            }
+                        }
+                    },
+                }
+            },
+            RunState::SaveGame =>{
+                save_game(&mut self.world);                
+                run_state = RunState::MainMenu { menu_selection: MainMenuSelection::LoadGame };
+            }
         }
 
         {
@@ -176,22 +231,6 @@ impl GameState for State {
 
         // delete dead entities
         delete_dead_entities(&mut self.world);
-
-        // render entities with renderable and position components
-        let positions = self.world.read_storage::<Position>();
-        let renderables = self.world.read_storage::<Renderable>();
-        let map = self.world.fetch::<Map>();
-
-        let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
-        data.sort_by(|&a, &b| b.1.render_order.cmp(&a.1.render_order));
-
-        for (pos, render) in data.iter(){
-            let idx = map.xy_idx(pos.x, pos.y);
-            if map.currently_visible_tiles[idx]{
-                context.set(pos.x, pos.y, render.foreground, render.background, render.symbol);
-            }
-            
-        }
 
     }
 }
@@ -234,6 +273,10 @@ fn main() -> rltk::BError {
     game_state.world.register::<IsConfused>();
     game_state.world.register::<GivesMovementSpeed>();
     game_state.world.register::<HasMovementSpeedModifier>();
+    game_state.world.register::<SimpleMarker<SerializeMe>>();
+    game_state.world.register::<SerializationHelper>();
+
+    game_state.world.insert(SimpleMarkerAllocator::<SerializeMe>::new());
     
     
     let map: Map = Map::map_with_rooms_and_corridors();

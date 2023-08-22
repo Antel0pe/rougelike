@@ -1,7 +1,20 @@
 use specs::{World, WorldExt, Join, Entity};
 use rltk::{Rltk, RGB, VirtualKeyCode, Point};
 
-use crate::{CombatStats, Player, GameLog, Name, Position, Map, InBackpack, FOV, Consumable};
+use crate::{CombatStats, Player, GameLog, Name, Position, Map, InBackpack, FOV, Consumable, RunState};
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum MainMenuSelection{
+    NewGame,
+    LoadGame,
+    Quit,
+}
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum MainMenuResult{
+    NoSelection{ selected: MainMenuSelection },
+    Selected{ selected: MainMenuSelection, }
+}
 
 pub fn draw_ui(world: &World, context: &mut Rltk){
     // draw box around bottom bit of screen
@@ -246,4 +259,76 @@ pub fn show_ranged_targeting(world: &mut World, context: &mut Rltk, ranged_item_
 
 
     (ItemMenuResult::NoResponse, None)
+}
+
+pub fn main_menu(world: &mut World, context: &mut Rltk) -> MainMenuResult{
+    let run_state = world.fetch::<RunState>();
+
+    context.print_color_centered(15, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Rust Rougelike Tutorial");
+
+    if let RunState::MainMenu { menu_selection: selection } = *run_state{
+        match selection{
+            MainMenuSelection::NewGame => {
+                main_menu_options_helper(context, true, 24, "New game");
+                main_menu_options_helper(context, false, 25, "Load game");
+                main_menu_options_helper(context, false, 26, "Quit");
+            },
+            MainMenuSelection::LoadGame => {
+                main_menu_options_helper(context, false, 24, "New game");
+                main_menu_options_helper(context, true, 25, "Load game");
+                main_menu_options_helper(context, false, 26, "Quit");
+            },
+            MainMenuSelection::Quit => {
+                main_menu_options_helper(context, false, 24, "New game");
+                main_menu_options_helper(context, false, 25, "Load game");
+                main_menu_options_helper(context, true, 26, "Quit");
+            }
+        }
+
+        match context.key {
+            None => return MainMenuResult::NoSelection { selected: selection },
+            Some(key) => {
+                match key {
+                    VirtualKeyCode::Escape => return MainMenuResult::NoSelection { selected: MainMenuSelection::Quit },
+                    VirtualKeyCode::Up => {
+                        let new_selection;
+
+                        match selection{
+                            MainMenuSelection::NewGame => new_selection = MainMenuSelection::Quit,
+                            MainMenuSelection::LoadGame => new_selection = MainMenuSelection::NewGame,
+                            MainMenuSelection::Quit => new_selection = MainMenuSelection::LoadGame,
+                        }
+
+                        return MainMenuResult::NoSelection { selected: new_selection };
+                    },
+                    VirtualKeyCode::Down =>{
+                        let new_selection;
+
+                        match selection {
+                            MainMenuSelection::NewGame => new_selection = MainMenuSelection::LoadGame,
+                            MainMenuSelection::LoadGame => new_selection = MainMenuSelection::Quit,
+                            MainMenuSelection::Quit => new_selection = MainMenuSelection::NewGame,
+                        }
+
+                        return MainMenuResult::NoSelection { selected: new_selection };
+                    },
+                    VirtualKeyCode::Return => return MainMenuResult::Selected { selected: selection },
+                    _ => return MainMenuResult::NoSelection { selected: selection }
+                }
+            }
+        }
+    }
+
+    MainMenuResult::NoSelection { selected: MainMenuSelection::Quit }
+}
+
+fn main_menu_options_helper(context: &mut Rltk, is_selected: bool, y: i32, option_name: &str){
+    let option_highlight: RGB;
+    if is_selected{
+        option_highlight = RGB::named(rltk::MAGENTA);
+    } else {
+        option_highlight = RGB::named(rltk::WHITE);
+    }
+
+    context.print_color_centered(y, option_highlight, RGB::named(rltk::BLACK), option_name);
 }

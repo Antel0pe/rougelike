@@ -1,12 +1,7 @@
 use specs::prelude::*;
 use std::cmp::{max, min};
-use specs_derive::Component;
-use crate::map::*;
 use rltk::{Rltk, VirtualKeyCode};
 use super::*;
-
-#[derive(Component, Debug)]
-pub struct Player{ }
 
 pub fn try_move_player(delta_x: i32, delta_y: i32, world: &mut World){
     let mut positions = world.write_storage::<Position>();
@@ -93,6 +88,8 @@ pub fn player_input(game_state: &mut State, context: &mut Rltk) -> RunState{
             VirtualKeyCode::I => return RunState::InInventory,
 
             VirtualKeyCode::R => return RunState::ShowDropItem,
+
+            VirtualKeyCode::M => return RunState::SaveGame,
 
             _ => { return RunState::AwaitingInput; }, // if irrelevant key pressed, nothing for game to update on
         },

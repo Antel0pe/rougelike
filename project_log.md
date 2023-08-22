@@ -56,3 +56,11 @@ dd/mm/yy
 - Added AOE component and spell fireball that ONE SHOTS mobs MUAHAHAHAHA
 - Added Confusion component and spell to prevent monsters from attacking for a few turns
 - Added dash boots with move speed modifiers
+
+21/08/23
+- Added main menu
+- Print json for some of game state
+
+22/08/23
+- Wrangling with serde and specs to serialize and deserialize entities without issue
+- Managed to output saved_game.json containing all world data

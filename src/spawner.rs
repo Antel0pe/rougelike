@@ -1,7 +1,7 @@
-use crate::{ProvidesHealing, Consumable, Ranged, InflictsDamage, AreaOfEffect, CausesConfusion, GivesMovementSpeed};
+use crate::{ProvidesHealing, Consumable, Ranged, InflictsDamage, AreaOfEffect, CausesConfusion, GivesMovementSpeed, SerializeMe};
 
 use super::{Player, Position, Renderable, FOV, Name, CombatStats, Monster, BlocksTile, Rect, Item};
-use specs::prelude::*;
+use specs::{prelude::*, saveload::{MarkedBuilder, SimpleMarker}};
 use rltk::{RGB, RandomNumberGenerator};
 
 pub const MAX_MONSTERS_PER_ROOM: i32 = 4;
@@ -20,6 +20,7 @@ pub fn player(world: &mut World, player_x: i32, player_y: i32) -> Entity {
         .with(FOV{ visible_tiles: Vec::new(), range: 8, needs_update: true, })
         .with(Name{ name: "Player".to_string() })
         .with(CombatStats{ max_hp: 30, hp: 30, attack: 5, defense: 2, })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build()
 }
 
@@ -36,6 +37,7 @@ pub fn health_potion(world: &mut World, x: i32, y: i32){
         .with(Item{ })
         .with(ProvidesHealing{ heal_amount: 8 })
         .with(Consumable{ charges: 3 })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
@@ -53,6 +55,7 @@ pub fn magic_missile_scroll(world: &mut World, x: i32, y: i32){
         .with(Consumable{ charges: 1 })
         .with(Ranged{ range: 6 })
         .with(InflictsDamage{ damage: 8 })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
@@ -71,6 +74,7 @@ pub fn fireball_spell(world: &mut World, x: i32, y: i32){
         .with(Ranged{ range: 6 })
         .with(InflictsDamage{ damage: 20 })
         .with(AreaOfEffect{ radius: 3 })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
@@ -88,6 +92,7 @@ pub fn confusion_spell(world: &mut World, x: i32, y: i32){
         .with(Consumable{ charges: 1 })
         .with(Ranged{ range: 6 })
         .with(CausesConfusion{ turns: 3 })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
@@ -104,6 +109,7 @@ pub fn dash_boots(world: &mut World, x: i32, y: i32){
         .with(Item{ })
         .with(Consumable{ charges: 1 })
         .with(GivesMovementSpeed{ speed_modifier: 2, turns: 3 })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
@@ -207,5 +213,6 @@ pub fn monster<S: ToString> (world: &mut World, x: i32, y: i32, glyph: rltk::Fon
         .with(Name{ name: name.to_string() })
         .with(BlocksTile{ })
         .with(CombatStats{ max_hp: 16, hp: 16, attack: 4, defense: 1, })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build()
 }
