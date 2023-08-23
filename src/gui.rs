@@ -1,7 +1,7 @@
 use specs::{World, WorldExt, Join, Entity};
 use rltk::{Rltk, RGB, VirtualKeyCode, Point};
 
-use crate::{CombatStats, Player, GameLog, Name, Position, Map, InBackpack, FOV, Consumable, RunState};
+use crate::{CombatStats, Player, GameLog, Name, Position, Map, InBackpack, FOV, Consumable, RunState, does_save_exist};
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum MainMenuSelection{
@@ -263,27 +263,34 @@ pub fn show_ranged_targeting(world: &mut World, context: &mut Rltk, ranged_item_
 
 pub fn main_menu(world: &mut World, context: &mut Rltk) -> MainMenuResult{
     let run_state = world.fetch::<RunState>();
+    let save_exists = does_save_exist();
+    // (new game selected?, load game selected?, quit selected?)
+    let mut options_are_selected:(bool, bool, bool) = (false, false, false);
 
     context.print_color_centered(15, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Rust Rougelike Tutorial");
 
     if let RunState::MainMenu { menu_selection: selection } = *run_state{
         match selection{
             MainMenuSelection::NewGame => {
-                main_menu_options_helper(context, true, 24, "New game");
-                main_menu_options_helper(context, false, 25, "Load game");
-                main_menu_options_helper(context, false, 26, "Quit");
+                options_are_selected.0 = true;
             },
             MainMenuSelection::LoadGame => {
-                main_menu_options_helper(context, false, 24, "New game");
-                main_menu_options_helper(context, true, 25, "Load game");
-                main_menu_options_helper(context, false, 26, "Quit");
+                options_are_selected.1 = true;
             },
             MainMenuSelection::Quit => {
-                main_menu_options_helper(context, false, 24, "New game");
-                main_menu_options_helper(context, false, 25, "Load game");
-                main_menu_options_helper(context, true, 26, "Quit");
+                options_are_selected.2 = true;
             }
         }
+
+        let (new_game_selected, load_game_selected, quit_selected) = options_are_selected;
+        main_menu_options_helper(context, new_game_selected, 24, "New Game");
+
+        if save_exists{
+            main_menu_options_helper(context, load_game_selected, 25, "Load game");
+        }
+
+        main_menu_options_helper(context, quit_selected, 26, "Quit");
+    
 
         match context.key {
             None => return MainMenuResult::NoSelection { selected: selection },
@@ -291,7 +298,7 @@ pub fn main_menu(world: &mut World, context: &mut Rltk) -> MainMenuResult{
                 match key {
                     VirtualKeyCode::Escape => return MainMenuResult::NoSelection { selected: MainMenuSelection::Quit },
                     VirtualKeyCode::Up => {
-                        let new_selection;
+                        let mut new_selection;
 
                         match selection{
                             MainMenuSelection::NewGame => new_selection = MainMenuSelection::Quit,
@@ -299,15 +306,23 @@ pub fn main_menu(world: &mut World, context: &mut Rltk) -> MainMenuResult{
                             MainMenuSelection::Quit => new_selection = MainMenuSelection::LoadGame,
                         }
 
+                        if new_selection == MainMenuSelection::LoadGame && !save_exists{
+                            new_selection = MainMenuSelection::NewGame;
+                        }
+
                         return MainMenuResult::NoSelection { selected: new_selection };
                     },
                     VirtualKeyCode::Down =>{
-                        let new_selection;
+                        let mut new_selection;
 
                         match selection {
                             MainMenuSelection::NewGame => new_selection = MainMenuSelection::LoadGame,
                             MainMenuSelection::LoadGame => new_selection = MainMenuSelection::Quit,
                             MainMenuSelection::Quit => new_selection = MainMenuSelection::NewGame,
+                        }
+
+                        if new_selection == MainMenuSelection::LoadGame && !save_exists{
+                            new_selection = MainMenuSelection::Quit;
                         }
 
                         return MainMenuResult::NoSelection { selected: new_selection };

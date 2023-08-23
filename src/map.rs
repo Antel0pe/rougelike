@@ -39,6 +39,10 @@ impl Map{
         x >= 0 || x < MAP_WIDTH as i32 || y >= 0 || y < MAP_HEIGHT as i32
     }
 
+    pub fn load_from_save(&mut self){
+        self.tile_content = vec![Vec::new(); MAP_COUNT];
+    }
+
     /// Fill room area with tiles
     fn apply_room_to_map(&mut self, room: &Rect){
         for y in room.y1..=room.y2{

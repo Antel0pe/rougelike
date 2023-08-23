@@ -89,7 +89,9 @@ pub fn player_input(game_state: &mut State, context: &mut Rltk) -> RunState{
 
             VirtualKeyCode::R => return RunState::ShowDropItem,
 
-            VirtualKeyCode::M => return RunState::SaveGame,
+            VirtualKeyCode::Escape => return RunState::SaveGame,
+
+            VirtualKeyCode::M => return RunState::MainMenu { menu_selection: MainMenuSelection::NewGame },
 
             _ => { return RunState::AwaitingInput; }, // if irrelevant key pressed, nothing for game to update on
         },

@@ -209,7 +209,9 @@ impl GameState for State {
                                 run_state = RunState::PreRun;
                             },
                             MainMenuSelection::LoadGame =>{
-                                run_state = RunState::PreRun;
+                                load_game(&mut self.world);
+                                run_state = RunState::AwaitingInput;
+                                delete_save();
                             },
                             MainMenuSelection::Quit =>{
                                 ::std::process::exit(0);
@@ -220,7 +222,8 @@ impl GameState for State {
             },
             RunState::SaveGame =>{
                 save_game(&mut self.world);                
-                run_state = RunState::MainMenu { menu_selection: MainMenuSelection::LoadGame };
+                ::std::process::exit(0);
+                // run_state = RunState::MainMenu { menu_selection: MainMenuSelection::LoadGame };
             }
         }
 

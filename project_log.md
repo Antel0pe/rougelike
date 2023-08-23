@@ -64,3 +64,7 @@ dd/mm/yy
 22/08/23
 - Wrangling with serde and specs to serialize and deserialize entities without issue
 - Managed to output saved_game.json containing all world data
+
+23/08/23
+- Implemented load from saved game
+- New game option in main menu doesn't really work
