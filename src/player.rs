@@ -92,6 +92,14 @@ pub fn player_input(game_state: &mut State, context: &mut Rltk) -> RunState{
             VirtualKeyCode::Escape => return RunState::SaveGame,
 
             VirtualKeyCode::M => return RunState::MainMenu { menu_selection: MainMenuSelection::NewGame },
+            
+            VirtualKeyCode::Period => {
+                if try_next_level(&mut game_state.world){
+                    return RunState::DescendFloor;
+                }
+            },
+
+            VirtualKeyCode::Space => return skip_turn(&mut game_state.world),
 
             _ => { return RunState::AwaitingInput; }, // if irrelevant key pressed, nothing for game to update on
         },
@@ -126,4 +134,48 @@ pub fn pickup_item(world: &mut World){
         },
     }
 
+}
+
+pub fn try_next_level(world: &mut World) -> bool{
+    let player_position = world.fetch::<Point>();
+    let map = world.fetch::<Map>();
+
+    let player_idx = map.xy_idx(player_position.x, player_position.y);
+
+    if map.tiles[player_idx] == TileType::DownStairs{
+        return true;
+    } else {
+        let mut gamelog = world.fetch_mut::<GameLog>();
+        gamelog.entries.push("No stairs to descend...".to_string());
+        return false;
+    }
+}
+
+pub fn skip_turn(world: &mut World) -> RunState{
+    let player_entity = world.fetch::<Entity>();
+    let fov = world.read_storage::<FOV>();
+    let monsters = world.read_storage::<Monster>();
+
+    let map = world.fetch::<Map>();
+
+    let mut can_heal = true;
+
+    let fov_tiles = fov.get(*player_entity).unwrap();
+    for tile in fov_tiles.visible_tiles.iter(){
+        let map_idx = map.xy_idx(tile.x, tile.y);
+
+        for entity in map.tile_content[map_idx].iter(){
+            if let Some(_) = monsters.get(*entity){
+                can_heal = false;
+            }
+        }
+    }
+
+    if can_heal{
+        let mut combat_stats = world.write_storage::<CombatStats>();
+        let player_stats = combat_stats.get_mut(*player_entity).unwrap();
+        player_stats.hp = i32::min(player_stats.hp + 1, player_stats.max_hp);
+    }
+
+    RunState::PlayerTurn
 }

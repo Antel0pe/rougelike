@@ -12,6 +12,7 @@ pub const MAP_COUNT: usize = MAP_WIDTH * MAP_HEIGHT;
 pub enum TileType{
     Wall,
     Floor,
+    DownStairs,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -23,6 +24,7 @@ pub struct Map{
     pub revealed_tiles: Vec<bool>,
     pub currently_visible_tiles: Vec<bool>,
     pub blocked_tiles: Vec<bool>,
+    pub depth: i32,
 
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
@@ -96,7 +98,7 @@ impl Map{
             .for_each(|t| t.clear());
     }
 
-    pub fn map_with_rooms_and_corridors() -> Map{
+    pub fn map_with_rooms_and_corridors(map_depth: i32) -> Map{
         let mut map = Map{
             tiles: vec![TileType::Wall; MAP_COUNT],
             rooms: Vec::new(),
@@ -106,6 +108,7 @@ impl Map{
             currently_visible_tiles: vec![false; MAP_COUNT],
             blocked_tiles: vec![false; MAP_COUNT],
             tile_content: vec![Vec::new(); MAP_COUNT],
+            depth: map_depth,
         };
     
         const MAX_ROOMS: i32 = 30;
@@ -150,6 +153,10 @@ impl Map{
             }
     
         }
+
+        let stair_position = map.rooms[map.rooms.len()-1].center();
+        let stair_idx = map.xy_idx(stair_position.0, stair_position.1);
+        map.tiles[stair_idx] = TileType::DownStairs;
 
         map
     }
@@ -221,6 +228,10 @@ pub fn draw_map(world: &World, context: &mut Rltk) {
                     glyph = rltk::to_cp437('#');
                     fg = RGB::from_f32(0.0, 1.0, 0.0);
                 },
+                TileType::DownStairs =>{
+                    glyph = rltk::to_cp437('>');
+                    fg = RGB::from_f32(0., 1.0, 1.0);
+                }
             }
 
             // if something is revealed meaning we've seen it, but we can't currently see it. It's not in our current fov

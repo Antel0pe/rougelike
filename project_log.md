@@ -68,3 +68,9 @@ dd/mm/yy
 23/08/23
 - Implemented load from saved game
 - New game option in main menu doesn't really work
+
+24/08/23
+- Player can descend to a new level in the map
+
+25/08/23
+- Added spawn table based on level depth

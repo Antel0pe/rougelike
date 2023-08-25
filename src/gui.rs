@@ -20,6 +20,10 @@ pub fn draw_ui(world: &World, context: &mut Rltk){
     // draw box around bottom bit of screen
     context.draw_box(0, 43, 79, 6, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
 
+    let map = world.fetch::<Map>();
+    context.print_color(2, 43, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK),
+        &format!("Depth: {}", map.depth));
+
     // draw hp bar
     let combat_stats = world.read_storage::<CombatStats>();
     let player = world.read_storage::<Player>();

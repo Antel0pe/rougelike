@@ -34,6 +34,8 @@ mod movement_speed_modifier;
 pub use crate::movement_speed_modifier::*;
 mod save_system;
 pub use crate::save_system::*;
+mod random_table;
+pub use crate::random_table::*;
 
 
 #[derive(PartialEq, Clone, Copy)]
@@ -47,6 +49,7 @@ pub enum RunState{
     ShowTargetting{ range: i32, item: Entity, },
     MainMenu{ menu_selection: gui::MainMenuSelection },
     SaveGame,
+    DescendFloor,
 }
 
 pub struct State {
@@ -92,6 +95,84 @@ impl State{
 
         self.world.maintain();
     }
+
+    pub fn entities_to_remove_on_depth_change(&mut self) -> Vec<Entity>{
+        let entities = self.world.entities();
+        let players = self.world.read_storage::<Player>();
+        let backpacks = self.world.read_storage::<InBackpack>();
+        let player_entity = self.world.fetch::<Entity>();
+    
+        let mut entities_to_delete = Vec::new();
+        for entity in entities.join(){
+            let mut should_delete = true;
+    
+            if let Some(_p) = players.get(entity){
+                should_delete = false;
+            }
+    
+            if let Some(backpack) = backpacks.get(entity){
+                if backpack.owner == *player_entity{
+                    should_delete = false;
+                }
+            }
+    
+            if should_delete{
+                entities_to_delete.push(entity);
+            }
+        }
+    
+        entities_to_delete
+    }
+
+    pub fn goto_next_level(&mut self){
+        let entities_to_delete = self.entities_to_remove_on_depth_change();
+
+        for entity in entities_to_delete{
+            self.world.delete_entity(entity)
+                .expect("Could not delete entity on level change.");
+        }
+
+        let new_level_map: Map;
+        let current_depth: i32;
+        {
+            let mut map = self.world.write_resource::<Map>();
+            current_depth = map.depth;
+            *map = Map::map_with_rooms_and_corridors(current_depth+1);
+            new_level_map = map.clone();
+        }
+
+        for room in new_level_map.rooms.iter().skip(1){
+            spawn_entities_in_room(&mut self.world, room, current_depth+1);
+        }
+
+        let (player_x, player_y) = new_level_map.rooms[0].center();
+        let mut player_position = self.world.write_resource::<Point>();
+        *player_position = Point::new(player_x, player_y);
+
+        let mut position_components = self.world.write_storage::<Position>();
+        let player_entity = self.world.fetch::<Entity>();
+
+        if let Some(player_position_component) = position_components.get_mut(*player_entity){
+            player_position_component.x = player_x;
+            player_position_component.y = player_y;
+
+        }
+
+        let mut fov = self.world.write_storage::<FOV>();
+        if let Some(player_fov) = fov.get_mut(*player_entity){
+            player_fov.needs_update = true;
+        }
+
+        let mut gamelog = self.world.fetch_mut::<GameLog>();
+        gamelog.entries.push("You descend a level and get some health.".to_string());
+
+        let mut combat_stats = self.world.write_storage::<CombatStats>();
+        if let Some(player_stats) = combat_stats.get_mut(*player_entity){
+            player_stats.hp = i32::max(player_stats.hp, player_stats.max_hp/2);
+        }
+
+    }
+    
 }
 impl GameState for State {
     fn tick(&mut self, context : &mut Rltk) {
@@ -224,6 +305,10 @@ impl GameState for State {
                 save_game(&mut self.world);                
                 ::std::process::exit(0);
                 // run_state = RunState::MainMenu { menu_selection: MainMenuSelection::LoadGame };
+            },
+            RunState::DescendFloor=>{
+                self.goto_next_level();
+                run_state = RunState::PreRun;
             }
         }
 
@@ -282,7 +367,7 @@ fn main() -> rltk::BError {
     game_state.world.insert(SimpleMarkerAllocator::<SerializeMe>::new());
     
     
-    let map: Map = Map::map_with_rooms_and_corridors();
+    let map: Map = Map::map_with_rooms_and_corridors(1);
     
     // get valid x, y for player
     let (player_x, player_y) = map.rooms[0].center();
@@ -294,7 +379,7 @@ fn main() -> rltk::BError {
     game_state.world.insert(rltk::RandomNumberGenerator::new());
     
     for room in map.rooms.iter().skip(1){
-        spawner::spawn_entities_in_room(&mut game_state.world, room);
+        spawner::spawn_entities_in_room(&mut game_state.world, room, 1);
     }
     
     // make map resource availale to world
