@@ -1,6 +1,6 @@
 use specs::prelude::*;
 
-use crate::{GameLog, WantsToPickUpItem, Position, InBackpack, Name, WantsToUseItem, CombatStats, ProvidesHealing, WantsToDropItem, InflictsDamage, Map, SuffersDamage, Consumable, AreaOfEffect, CausesConfusion, IsConfused, GivesMovementSpeed, HasMovementSpeedModifier};
+use crate::{GameLog, WantsToPickUpItem, Position, InBackpack, Name, WantsToUseItem, CombatStats, ProvidesHealing, WantsToDropItem, InflictsDamage, Map, SuffersDamage, Consumable, AreaOfEffect, CausesConfusion, IsConfused, GivesMovementSpeed, HasMovementSpeedModifier, Equippable, Equipped};
 
 pub struct ItemCollectionSystem{ }
 
@@ -49,6 +49,9 @@ impl<'a> System<'a> for ItemUseSystem{
                         WriteStorage<'a, IsConfused>,
                         ReadStorage<'a, GivesMovementSpeed>,
                         WriteStorage<'a, HasMovementSpeedModifier>,
+                        ReadStorage<'a, Equippable>,
+                        WriteStorage<'a, Equipped>,
+                        WriteStorage<'a, InBackpack>,
                      );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -68,6 +71,9 @@ impl<'a> System<'a> for ItemUseSystem{
             mut is_confused,
             gives_movement_speed,
             mut has_movement_speed_modifier,
+            equippable,
+            mut equipped,
+            mut backpack,
         ) = data;
 
         for (entity, use_item) in (&entities, &wants_to_use_item).join(){
@@ -156,14 +162,47 @@ impl<'a> System<'a> for ItemUseSystem{
                 used_item = true;
             }
 
-            if !used_item{ return; }
+            if let Some(can_equip) = equippable.get(use_item.item){
+                let target_slot = can_equip.slot;
+                let target_entity = targets[0];
+
+                // find items in existing slot
+                let mut items_to_unequip = Vec::new();
+                for (entity, equipped, name) in (&entities, &equipped, &names).join(){
+                    if equipped.owner == target_entity && equipped.slot == target_slot{
+                        items_to_unequip.push(entity);
+
+                        if target_entity == *player_entity{
+                            gamelog.entries.push(format!("You unequip {}", name.name));
+                        }
+                    }
+                }
+
+                // unequip items and place in backpack
+                for item in items_to_unequip.iter(){
+                    equipped.remove(*item);
+                    backpack.insert(*item, InBackpack { owner: target_entity })
+                        .expect("Could not insert unequipped item into backpack.");
+                }
+
+                // equip new item
+                equipped.insert(use_item.item, Equipped { owner: target_entity, slot: target_slot })
+                    .expect("Could not equip item.");
+                backpack.remove(use_item.item);
+                if target_entity == *player_entity{
+                    gamelog.entries.push(format!("You equip {}", names.get(use_item.item).unwrap().name))
+                }
+
+            }
 
             if let Some(consumable_item) = consumables.get_mut(use_item.item){
-                consumable_item.charges -= 1;
-
-                if consumable_item.charges <= 0{
-                    entities.delete(use_item.item)
-                        .expect("Could not delete consumable entity.");
+                if used_item{
+                    consumable_item.charges -= 1;
+    
+                    if consumable_item.charges <= 0{
+                        entities.delete(use_item.item)
+                            .expect("Could not delete consumable entity.");
+                    }
                 }
             }
         }

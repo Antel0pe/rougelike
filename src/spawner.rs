@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{ProvidesHealing, Consumable, Ranged, InflictsDamage, AreaOfEffect, CausesConfusion, GivesMovementSpeed, SerializeMe, RandomTable};
+use crate::{ProvidesHealing, Consumable, Ranged, InflictsDamage, AreaOfEffect, CausesConfusion, GivesMovementSpeed, SerializeMe, RandomTable, Equippable, EquipmentSlot, MeleePowerBonus, DefenseBonus};
 
 use super::{Player, Position, Renderable, FOV, Name, CombatStats, Monster, BlocksTile, Rect, Item};
 use specs::{prelude::*, saveload::{MarkedBuilder, SimpleMarker}};
@@ -152,6 +152,8 @@ pub fn spawn_entities_in_room(world: &mut World, room: &Rect, map_depth: i32){
             "Fireball Scroll" => fireball_spell(world, *x, *y),
             "Confusion Scroll" => confusion_spell(world, *x, *y),
             "Magic Missile Scroll" => magic_missile_scroll(world, *x, *y),
+            "Dagger" => dagger(world, *x, *y),
+            "Shield" => shield(world, *x, *y),
             _ => {},
         }
     }
@@ -193,4 +195,40 @@ pub fn room_table(map_depth: i32) -> RandomTable{
         .add("Fireball Scroll", 2 + map_depth)
         .add("Confusion Scroll", 2 + map_depth)
         .add("Magic Missile Scroll", 4)
+        .add("Dagger", 3)
+        .add("Shield", 3)
+}
+
+pub fn dagger(world: &mut World, x: i32, y: i32){
+    world.create_entity()
+        .with(Position{ x, y })
+        .with(Renderable{
+            symbol: rltk::to_cp437('/'),
+            foreground: RGB::named(rltk::CYAN),
+            background: RGB::named(rltk::BLACK),
+            render_order: 2,
+        })
+        .with(Name{ name: "Dagger".to_string() })
+        .with(Item{ })
+        .with(Equippable{ slot: EquipmentSlot::Melee })
+        .with(MeleePowerBonus{ power: 2 })
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
+}
+
+pub fn shield(world: &mut World, x:i32, y: i32){
+    world.create_entity()
+        .with(Position{ x, y })
+        .with(Renderable{
+            symbol: rltk::to_cp437('('),
+            foreground: RGB::named(rltk::CYAN),
+            background: RGB::named(rltk::BLACK),
+            render_order: 2,
+        })
+        .with(Name{ name: "Shield".to_string() })
+        .with(Item{ })
+        .with(Equippable{ slot: EquipmentSlot::Shield })
+        .with(DefenseBonus{ defense: 1 })
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
 }

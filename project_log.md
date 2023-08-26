@@ -74,3 +74,7 @@ dd/mm/yy
 
 25/08/23
 - Added spawn table based on level depth
+
+26/08/23
+- Added equippable items like dagger and shield
+- On equip, they give offensive/defensive bonuses when fighting

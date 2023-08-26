@@ -101,6 +101,7 @@ impl State{
         let players = self.world.read_storage::<Player>();
         let backpacks = self.world.read_storage::<InBackpack>();
         let player_entity = self.world.fetch::<Entity>();
+        let equipped = self.world.read_storage::<Equipped>();
     
         let mut entities_to_delete = Vec::new();
         for entity in entities.join(){
@@ -112,6 +113,12 @@ impl State{
     
             if let Some(backpack) = backpacks.get(entity){
                 if backpack.owner == *player_entity{
+                    should_delete = false;
+                }
+            }
+
+            if let Some(equip) = equipped.get(entity){
+                if equip.owner == *player_entity{
                     should_delete = false;
                 }
             }
@@ -363,6 +370,10 @@ fn main() -> rltk::BError {
     game_state.world.register::<HasMovementSpeedModifier>();
     game_state.world.register::<SimpleMarker<SerializeMe>>();
     game_state.world.register::<SerializationHelper>();
+    game_state.world.register::<Equippable>();
+    game_state.world.register::<Equipped>();
+    game_state.world.register::<MeleePowerBonus>();
+    game_state.world.register::<DefenseBonus>();
 
     game_state.world.insert(SimpleMarkerAllocator::<SerializeMe>::new());
     

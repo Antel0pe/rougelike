@@ -152,6 +152,33 @@ pub struct HasMovementSpeedModifier{
     pub turns_used: i32,
 }
 
+#[derive(PartialEq, Clone, Copy, Serialize, Deserialize)]
+pub enum EquipmentSlot{
+    Melee,
+    Shield,
+}
+
+#[derive(Component, Serialize, Deserialize, Clone)]
+pub struct Equippable{
+    pub slot: EquipmentSlot,
+}
+
+#[derive(Component, ConvertSaveload, Clone)]
+pub struct Equipped{
+    pub owner: Entity,
+    pub slot: EquipmentSlot,
+}
+
+#[derive(Component, ConvertSaveload, Clone)]
+pub struct MeleePowerBonus{
+    pub power: i32,
+}
+
+#[derive(Component, ConvertSaveload, Clone)]
+pub struct DefenseBonus{
+    pub defense: i32,
+}
+
 // serialization helpers
 
 pub struct SerializeMe;

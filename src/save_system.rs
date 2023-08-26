@@ -34,7 +34,7 @@ pub fn save_game(world: &mut World){
         let mut serializer = serde_json::Serializer::new(file_writer);
 
         serialize_components!(world, serializer, data, 
-            Position, Renderable, Player, FOV, Monster, Name, BlocksTile, CombatStats, WantsToMelee, SuffersDamage, Item, ProvidesHealing, InBackpack, WantsToPickUpItem, WantsToUseItem, WantsToDropItem, Consumable, Ranged, InflictsDamage, AreaOfEffect, CausesConfusion, IsConfused, GivesMovementSpeed, HasMovementSpeedModifier, SerializationHelper);
+            Position, Renderable, Player, FOV, Monster, Name, BlocksTile, CombatStats, WantsToMelee, SuffersDamage, Item, ProvidesHealing, InBackpack, WantsToPickUpItem, WantsToUseItem, WantsToDropItem, Consumable, Ranged, InflictsDamage, AreaOfEffect, CausesConfusion, IsConfused, GivesMovementSpeed, HasMovementSpeedModifier, SerializationHelper, Equippable, Equipped, MeleePowerBonus, DefenseBonus);
     }
 
 
@@ -85,7 +85,7 @@ pub fn load_game(world: &mut World){
         );
 
         deserialize_components!(world, deserializer, data,
-            Position, Renderable, Player, FOV, Monster, Name, BlocksTile, CombatStats, WantsToMelee, SuffersDamage, Item, ProvidesHealing, InBackpack, WantsToPickUpItem, WantsToUseItem, WantsToDropItem, Consumable, Ranged, InflictsDamage, AreaOfEffect, CausesConfusion, IsConfused, GivesMovementSpeed, HasMovementSpeedModifier, SerializationHelper);
+            Position, Renderable, Player, FOV, Monster, Name, BlocksTile, CombatStats, WantsToMelee, SuffersDamage, Item, ProvidesHealing, InBackpack, WantsToPickUpItem, WantsToUseItem, WantsToDropItem, Consumable, Ranged, InflictsDamage, AreaOfEffect, CausesConfusion, IsConfused, GivesMovementSpeed, HasMovementSpeedModifier, SerializationHelper, Equippable, Equipped, MeleePowerBonus, DefenseBonus);
 
     }
 
