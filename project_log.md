@@ -78,3 +78,7 @@ dd/mm/yy
 26/08/23
 - Added equippable items like dagger and shield
 - On equip, they give offensive/defensive bonuses when fighting
+
+27/08/23
+- System to unequip items
+- Game over screen and handler

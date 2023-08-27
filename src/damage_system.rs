@@ -1,6 +1,5 @@
 use specs::prelude::*;
-use rltk::console;
-use crate::{SuffersDamage, CombatStats, Player, GameLog, Name};
+use crate::{SuffersDamage, CombatStats, Player, GameLog, Name, RunState};
 
 pub struct DamageSystem{ }
 
@@ -39,7 +38,10 @@ pub fn delete_dead_entities(world: &mut World){
         for (combat_stats, entity) in (&combat_stats, &entities).join(){
             if combat_stats.hp <= 0 {
                 match players.get(entity){
-                    Some(_) => console::log("You ded..."),
+                    Some(_) => {
+                        let mut run_state = world.write_resource::<RunState>();
+                        *run_state = RunState::GameOver;
+                    },
                     None => {
                         let entity_name = names.get(entity);
                         if let Some(name) = entity_name{

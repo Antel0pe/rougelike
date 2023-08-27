@@ -92,6 +92,8 @@ pub fn player_input(game_state: &mut State, context: &mut Rltk) -> RunState{
             VirtualKeyCode::Escape => return RunState::SaveGame,
 
             VirtualKeyCode::M => return RunState::MainMenu { menu_selection: MainMenuSelection::NewGame },
+
+            VirtualKeyCode::U => return RunState::ShowUnequipItem,
             
             VirtualKeyCode::Period => {
                 if try_next_level(&mut game_state.world){

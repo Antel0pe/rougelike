@@ -50,6 +50,8 @@ pub enum RunState{
     MainMenu{ menu_selection: gui::MainMenuSelection },
     SaveGame,
     DescendFloor,
+    ShowUnequipItem,
+    GameOver,
 }
 
 pub struct State {
@@ -92,6 +94,9 @@ impl State{
 
         let mut movement_speed_modifier = MovementSpeedModifier{ };
         movement_speed_modifier.run_now(&self.world);
+
+        let mut item_unequip_system = ItemUnequipSystem{ };
+        item_unequip_system.run_now(&self.world);
 
         self.world.maintain();
     }
@@ -177,6 +182,41 @@ impl State{
         if let Some(player_stats) = combat_stats.get_mut(*player_entity){
             player_stats.hp = i32::max(player_stats.hp, player_stats.max_hp/2);
         }
+
+    }
+
+    pub fn game_over_cleanup(&mut self){
+        let mut entities: Vec<Entity> = Vec::new();
+        for e in self.world.entities().join(){
+            entities.push(e);
+        }
+
+        for e in entities{
+            self.world.delete_entity(e)
+                .expect("Could not delete entity after game over");
+        }
+
+        let world_map;
+        {
+            let mut map_resource = self.world.write_resource::<Map>();
+            *map_resource = Map::map_with_rooms_and_corridors(1);
+            world_map = map_resource.clone();
+        }
+
+        for room in world_map.rooms.iter().skip(1){
+            spawner::spawn_entities_in_room(&mut self.world, room, 1);
+        }
+
+        let (player_x, player_y) = world_map.rooms[0].center();
+        let player_entity = spawner::player(&mut self.world, player_x, player_y);
+
+        let mut player_position = self.world.write_resource::<Point>();
+        *player_position = Point::new(player_x, player_y);
+
+        let mut player_entity_resource = self.world.write_resource::<Entity>();
+        *player_entity_resource = player_entity;
+
+        
 
     }
     
@@ -313,9 +353,34 @@ impl GameState for State {
                 ::std::process::exit(0);
                 // run_state = RunState::MainMenu { menu_selection: MainMenuSelection::LoadGame };
             },
-            RunState::DescendFloor=>{
+            RunState::DescendFloor =>{
                 self.goto_next_level();
                 run_state = RunState::PreRun;
+            },
+            RunState::ShowUnequipItem =>{
+                let (item_menu_result, unequip_item_option) = gui::show_unequip_item_menu(&mut self.world, context);
+
+                match item_menu_result{
+                    ItemMenuResult::NoResponse => {},
+                    ItemMenuResult::Exit => run_state = RunState::AwaitingInput,
+                    ItemMenuResult::Selected =>{
+                        let unequip_item = unequip_item_option.unwrap();
+                        let mut wants_to_unequip_item = self.world.write_storage::<WantsToUnequipItem>();
+                        wants_to_unequip_item.insert(*self.world.fetch::<Entity>(), WantsToUnequipItem{ item: unequip_item })
+                            .expect("Could not insert intent: wants to unequip item");
+                        run_state = RunState::PlayerTurn;
+                    }
+                }
+            },
+            RunState::GameOver =>{
+                let end_screen_selection = gui::game_over(context);
+                match end_screen_selection{
+                    GameOverResult::NoSelection => {},
+                    GameOverResult::GoToMainMenu =>{
+                        self.game_over_cleanup();
+                        run_state = RunState::MainMenu { menu_selection: MainMenuSelection::NewGame };
+                    },
+                }
             }
         }
 
@@ -374,6 +439,7 @@ fn main() -> rltk::BError {
     game_state.world.register::<Equipped>();
     game_state.world.register::<MeleePowerBonus>();
     game_state.world.register::<DefenseBonus>();
+    game_state.world.register::<WantsToUnequipItem>();
 
     game_state.world.insert(SimpleMarkerAllocator::<SerializeMe>::new());
     

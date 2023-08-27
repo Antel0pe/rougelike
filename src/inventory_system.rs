@@ -1,6 +1,6 @@
 use specs::prelude::*;
 
-use crate::{GameLog, WantsToPickUpItem, Position, InBackpack, Name, WantsToUseItem, CombatStats, ProvidesHealing, WantsToDropItem, InflictsDamage, Map, SuffersDamage, Consumable, AreaOfEffect, CausesConfusion, IsConfused, GivesMovementSpeed, HasMovementSpeedModifier, Equippable, Equipped};
+use crate::{GameLog, WantsToPickUpItem, Position, InBackpack, Name, WantsToUseItem, CombatStats, ProvidesHealing, WantsToDropItem, InflictsDamage, Map, SuffersDamage, Consumable, AreaOfEffect, CausesConfusion, IsConfused, GivesMovementSpeed, HasMovementSpeedModifier, Equippable, Equipped, WantsToUnequipItem};
 
 pub struct ItemCollectionSystem{ }
 
@@ -242,5 +242,45 @@ impl<'a> System<'a> for ItemDropSystem{
         }
 
         wants_to_drop_item.clear();
+    }
+}
+
+pub struct ItemUnequipSystem{ }
+
+impl<'a> System<'a> for ItemUnequipSystem{
+    type SystemData = ( WriteStorage<'a, WantsToUnequipItem>,
+                        WriteStorage<'a, InBackpack>,
+                        WriteStorage<'a, Equipped>,
+                        Entities<'a>,
+                        WriteExpect<'a, GameLog>,
+                        ReadExpect<'a, Entity>,
+                        ReadStorage<'a, Name>,
+                    );
+
+    fn run(&mut self, data: Self::SystemData) {
+        let ( 
+                mut wants_to_unequip_item,
+                mut in_backpack, 
+                mut equipped,
+                entities,
+                mut gamelog,
+                player_entity,
+                names,
+            )
+            = data;
+
+
+        for (wants_to_unequip, entity) in (&wants_to_unequip_item, &entities).join(){
+            equipped.remove(wants_to_unequip.item);
+            in_backpack.insert(wants_to_unequip.item, InBackpack { owner: entity })
+                .expect("Could not unequip item");
+
+            if entity == *player_entity{
+                gamelog.entries.push(format!("You unequip the {}", names.get(wants_to_unequip.item).unwrap().name));
+            }
+
+        }
+
+        wants_to_unequip_item.clear();
     }
 }

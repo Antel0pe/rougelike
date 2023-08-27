@@ -1,7 +1,7 @@
 use specs::{World, WorldExt, Join, Entity};
 use rltk::{Rltk, RGB, VirtualKeyCode, Point};
 
-use crate::{CombatStats, Player, GameLog, Name, Position, Map, InBackpack, FOV, Consumable, RunState, does_save_exist};
+use crate::{CombatStats, Player, GameLog, Name, Position, Map, InBackpack, FOV, Consumable, RunState, does_save_exist, Equipped};
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum MainMenuSelection{
@@ -350,4 +350,69 @@ fn main_menu_options_helper(context: &mut Rltk, is_selected: bool, y: i32, optio
     }
 
     context.print_color_centered(y, option_highlight, RGB::named(rltk::BLACK), option_name);
+}
+
+pub fn show_unequip_item_menu(world: &mut World, context: &mut Rltk) -> (ItemMenuResult, Option<Entity>){
+    let player_entity = world.fetch::<Entity>();
+    let names = world.read_storage::<Name>();
+    let equipped_items = world.read_storage::<Equipped>();
+    let entities = world.entities();
+
+    let inventory_count = (&names, &equipped_items).join()
+        .filter(|(_name, pack)| pack.owner == *player_entity)
+        .count() as i32;
+
+    let mut y = 25 - (inventory_count/2);
+
+    context.draw_box(15, y-2, 31, inventory_count+3, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+    context.print_color(18, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Remove which item?");
+    context.print_color(18, y+inventory_count+1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Escape to cancel");
+
+    let mut equippable: Vec<Entity> = Vec::new();
+    for (j, (entity, _equip, name)) in (&entities, &equipped_items, &names).join().filter(|item| item.1.owner == *player_entity).enumerate(){
+
+        context.set(17, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437('('));
+        context.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
+        context.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
+
+        context.print(21, y, name.name.to_string());
+        
+        equippable.push(entity);
+
+        y+=1;
+    }
+
+    match context.key {
+        None => (ItemMenuResult::NoResponse, None),
+        Some(key) => {
+            match key {
+                VirtualKeyCode::Escape => (ItemMenuResult::Exit, None),
+                _ => {
+                    let selection = rltk::letter_to_option(key);
+                    if selection >= 0 && selection < inventory_count{
+                        return (ItemMenuResult::Selected, Some(equippable[selection as usize]));
+                    } 
+                    
+                    (ItemMenuResult::NoResponse, None)
+                }
+            }
+        }
+    }
+}
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum GameOverResult{
+    NoSelection,
+    GoToMainMenu,
+}
+
+pub fn game_over(context: &mut Rltk) -> GameOverResult{
+    context.print_color_centered(17, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "You ded.");
+
+    context.print_color_centered(20, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK), "Press any key to return to main menu");
+
+    match context.key{
+        None => GameOverResult::NoSelection,
+        Some(_) => GameOverResult::GoToMainMenu,
+    }
 }

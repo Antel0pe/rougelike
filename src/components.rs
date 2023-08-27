@@ -179,6 +179,11 @@ pub struct DefenseBonus{
     pub defense: i32,
 }
 
+#[derive(Component, ConvertSaveload, Clone)]
+pub struct WantsToUnequipItem{
+    pub item: Entity,
+}
+
 // serialization helpers
 
 pub struct SerializeMe;
